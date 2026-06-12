@@ -238,14 +238,14 @@ mkdir -p "$AGENT_TEAM_TASKS_DIR/specs"
    Only proceed on approval.
 
 4. Break the design into task files in `todo/` following Dispatch Mode,
-   adding one extra frontmatter field to each task:
+   filling the optional `spec:` frontmatter field in each task:
 
 ```yaml
 spec: ../specs/YYYY-MM-DD-<slug>.md
 ```
 
    The path is relative to the task file's own directory, so it resolves
-   from `todo/`, `doing/`, and `done/` alike.
+   from any task folder (`todo/`, `doing/`, `done/`, `approved/`) alike.
 
 5. Report to the developer: spec path + list of created tasks with
    acceptance criteria.
