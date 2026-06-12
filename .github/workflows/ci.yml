@@ -20,7 +20,9 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install tmux shellcheck
       - name: Node tests
-        run: node --test 'tests/*.test.mjs'
+        # Unquoted on purpose: the shell expands the glob, which works on every
+        # Node version (Node 20 does not glob --test patterns itself).
+        run: node --test tests/*.test.mjs
       - name: Dispatch smoke test
         run: bash tests/dispatch-workers.test.sh
       - name: Shellcheck
