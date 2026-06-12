@@ -30,7 +30,9 @@ acquire_lock() {
   fi
   # mv is atomic; prevents deleting a fresh lock another process just created
   local stale="$LOCK_DIR.stale.$$"
-  mv "$LOCK_DIR" "$stale" 2>/dev/null && rm -rf "$stale" || true
+  if mv "$LOCK_DIR" "$stale" 2>/dev/null; then
+    rm -rf "$stale"
+  fi
   if mkdir "$LOCK_DIR" 2>/dev/null; then
     echo $$ > "$LOCK_DIR/pid"
     return 0
