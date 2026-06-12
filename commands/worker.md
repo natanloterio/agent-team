@@ -10,7 +10,7 @@ You are a worker Claude Code session. Your job is to claim one task from the que
 ## Step 0 — Load config
 
 ```bash
-env_out=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/config.mjs" --print-env) || { echo "AGENT_TEAM_WORKER_NO_CONFIG"; exit 3; }
+env_out=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/config.mjs" --print-env) || { printf 'AGENT_TEAM_WORKER_%s\n' 'NO_CONFIG'; exit 3; }
 eval "$env_out"
 ```
 
@@ -34,7 +34,7 @@ REPO=$(basename $(git rev-parse --show-toplevel))
 TASK_FILE=$(ls "$AGENT_TEAM_TASKS_DIR/todo/"*.md 2>/dev/null | head -1 | xargs basename)
 ```
 
-If `$AGENT_TEAM_TASKS_DIR/todo/` is empty or `$TASK_FILE` is unset, print `AGENT_TEAM_WORKER_NO_TASKS` and stop.
+If `$AGENT_TEAM_TASKS_DIR/todo/` is empty or `$TASK_FILE` is unset, print `AGENT_TEAM_WORKER_NO_TASKS` (constructed form: `printf 'AGENT_TEAM_WORKER_%s\n' 'NO_TASKS'`) and stop.
 
 ## Step 2 — Claim the task atomically
 
@@ -76,7 +76,7 @@ Read the `role` field from the task frontmatter. Treat it as your system prompt 
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/gwt.sh" "$REPO-$WORKTREE_BRANCH" -b "$WORKTREE_BRANCH"
 ```
 
-Note: bash state is not shared across tool calls in Claude Code. All subsequent commands must use absolute paths. Use `$(git rev-parse --show-toplevel)` to resolve the main repo root when needed.
+Note: Shell state persists across Bash tool calls in this session, but re-run the Step 0 eval in any NEW bash context if variables come up empty. All subsequent commands must use absolute paths. Use `$(git rev-parse --show-toplevel)` to resolve the main repo root when needed.
 
 ## Step 6 — Implement the task
 
@@ -122,3 +122,5 @@ strings. End the session with exactly one of:
 - `AGENT_TEAM_WORKER_NO_CONFIG` — .agent-team/config.json missing/invalid
 
 Never paraphrase these lines. Print the line as the last output of your turn.
+
+**Important:** Do not write these strings anywhere except the final printed line — not in prose, not inside quoted commands. When a command must emit one on failure, construct it (e.g. `printf 'AGENT_TEAM_WORKER_%s\n' 'NO_TASKS'`) so the literal never appears in your rendered input.

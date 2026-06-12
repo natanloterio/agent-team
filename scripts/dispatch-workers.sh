@@ -28,7 +28,9 @@ acquire_lock() {
   if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
     return 1
   fi
-  rm -rf "$LOCK_DIR"
+  # mv is atomic; prevents deleting a fresh lock another process just created
+  local stale="$LOCK_DIR.stale.$$"
+  mv "$LOCK_DIR" "$stale" 2>/dev/null && rm -rf "$stale" || true
   if mkdir "$LOCK_DIR" 2>/dev/null; then
     echo $$ > "$LOCK_DIR/pid"
     return 0
@@ -46,14 +48,16 @@ NOW=$(date +%s)
 MIN_AGE_FOR_IDLE_CHECK=60
 for SESSION in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^${AGENT_TEAM_WORKER_PREFIX}" || true); do
   LAST=$(tmux capture-pane -t "$SESSION" -p 2>/dev/null | tail -25)
+  CREATED=$(tmux display-message -t "$SESSION" -p '#{session_created}' 2>/dev/null || echo "$NOW")
+  AGE=$(( NOW - CREATED ))
   # Primary: the worker skill's pinned completion contract.
-  if echo "$LAST" | grep -qE "AGENT_TEAM_WORKER_(DONE|NO_TASKS|NO_CONFIG)"; then
+  # Age-gated to avoid false-positive reaping when the contract string appears
+  # in the command text during session startup (before the worker has run).
+  if [ "$AGE" -gt "$MIN_AGE_FOR_IDLE_CHECK" ] && echo "$LAST" | grep -qE "AGENT_TEAM_WORKER_(DONE|NO_TASKS|NO_CONFIG)"; then
     tmux kill-session -t "$SESSION" 2>/dev/null || true
     echo "Reaped (finished): $SESSION"
     continue
   fi
-  CREATED=$(tmux display-message -t "$SESSION" -p '#{session_created}' 2>/dev/null || echo "$NOW")
-  AGE=$(( NOW - CREATED ))
   # Fallback: Claude Code's spinner line turns past-tense + duration when a
   # turn finishes ("✻ Worked for 9m 21s", no ellipsis). FRAGILE — breaks when
   # the UI strings change; /agent-team:doctor is the diagnostic.
@@ -68,6 +72,25 @@ for SESSION in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^${
   if [ "$AGE" -gt "$AGENT_TEAM_STALE_SECONDS" ]; then
     tmux kill-session -t "$SESSION" 2>/dev/null || true
     echo "Reaped (>${AGENT_TEAM_STALE_SECONDS}s): $SESSION"
+  fi
+done
+
+# --- Requeue stale doing/ claims ---
+# Detect stat flavor once (Linux: stat -c %Y; macOS: stat -f %m)
+if stat -c %Y / >/dev/null 2>&1; then
+  _stat_mtime() { stat -c %Y "$1" 2>/dev/null; }
+else
+  _stat_mtime() { stat -f %m "$1" 2>/dev/null; }
+fi
+for DOING_FILE in "$AGENT_TEAM_TASKS_DIR/doing/"*.md; do
+  [ -f "$DOING_FILE" ] || continue
+  FILE_MTIME=$(_stat_mtime "$DOING_FILE")
+  [ -n "$FILE_MTIME" ] || continue
+  FILE_AGE=$(( NOW - FILE_MTIME ))
+  if [ "$FILE_AGE" -gt "$AGENT_TEAM_STALE_SECONDS" ]; then
+    DOING_BASENAME=$(basename "$DOING_FILE")
+    mv "$DOING_FILE" "$AGENT_TEAM_TASKS_DIR/todo/$DOING_BASENAME"
+    echo "Requeued (stale claim): $DOING_BASENAME"
   fi
 done
 

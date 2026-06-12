@@ -33,4 +33,14 @@ OUT=$(run)
 echo "$OUT" | grep -q "No unclaimed tasks" || { echo "FAIL: stale lock not reclaimed: $OUT"; exit 1; }
 [ ! -d "$ROOT/.tasks/.dispatch.lock.d" ] || { echo "FAIL: lock not released on exit"; exit 1; }
 
+echo "--- stale doing/ claim is requeued"
+mkdir -p "$ROOT/.tasks/doing" "$ROOT/.tasks/todo"
+touch "$ROOT/.tasks/doing/old.md"
+# Backdate 3 hours — touch -t YYYYMMDDHHMM works on both Linux and macOS
+touch -t 202601010000 "$ROOT/.tasks/doing/old.md"
+OUT=$(run)
+echo "$OUT" | grep -q "Requeued (stale claim): old.md" || { echo "FAIL: stale claim not requeued: $OUT"; exit 1; }
+[ -f "$ROOT/.tasks/todo/old.md" ] || { echo "FAIL: file not moved to todo/: $OUT"; exit 1; }
+[ ! -f "$ROOT/.tasks/doing/old.md" ] || { echo "FAIL: file still in doing/ after requeue: $OUT"; exit 1; }
+
 echo "ALL DISPATCH SMOKE TESTS PASSED"
