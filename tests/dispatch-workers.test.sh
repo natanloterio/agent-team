@@ -5,7 +5,14 @@ set -euo pipefail
 PLUGIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 ROOT=$(mktemp -d)
-trap 'rm -rf "$ROOT"; tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^dispatch-test-" | xargs -r -I{} tmux kill-session -t {} 2>/dev/null || true' EXIT
+# Stub claude on PATH so the spawn path never boots a real
+# `claude --dangerously-skip-permissions` — and doesn't die instantly on CI
+# runners where claude is absent (dead session -> send-keys fails -> set -e
+# aborts). The stub just sleeps, keeping the tmux session alive for the trap.
+STUB=$(mktemp -d)
+printf '#!/bin/sh\nsleep 600\n' > "$STUB/claude"; chmod +x "$STUB/claude"
+export PATH="$STUB:$PATH"
+trap 'rm -rf "$ROOT" "$STUB"; tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^dispatch-test-" | xargs -r -I{} tmux kill-session -t {} 2>/dev/null || true' EXIT
 git -C "$ROOT" init -q -b main
 mkdir -p "$ROOT/.agent-team"
 echo '{"workerSessionPrefix": "dispatch-test-"}' > "$ROOT/.agent-team/config.json"
@@ -42,5 +49,6 @@ OUT=$(run)
 echo "$OUT" | grep -q "Requeued (stale claim): old.md" || { echo "FAIL: stale claim not requeued: $OUT"; exit 1; }
 [ -f "$ROOT/.tasks/todo/old.md" ] || { echo "FAIL: file not moved to todo/: $OUT"; exit 1; }
 [ ! -f "$ROOT/.tasks/doing/old.md" ] || { echo "FAIL: file still in doing/ after requeue: $OUT"; exit 1; }
+echo "$OUT" | grep -q "Spawned: dispatch-test-1" || { echo "FAIL: requeued task not spawned: $OUT"; exit 1; }
 
 echo "ALL DISPATCH SMOKE TESTS PASSED"
