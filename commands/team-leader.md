@@ -115,7 +115,9 @@ arm one — the protocol tolerates a duplicate wake, but not a dead session.
 
 ## Dispatch Mode — Breaking down a goal into tasks
 
-When the developer gives you a goal:
+When the developer gives you a goal (if the goal is too vague or ambiguous
+to break into tasks, offer Brainstorm Mode — below — instead of dispatching
+blind):
 
 1. Break it into discrete, independently-implementable tasks
 2. For each task, create a file in `"$AGENT_TEAM_TASKS_DIR/todo/"` named `YYYY-MM-DD-<slug>.md`
@@ -132,6 +134,7 @@ preview_path: /path/to/route   # UI tasks only
 acceptance_criteria:
   - <criterion 1>
   - <criterion 2>
+spec:                  # optional — set by Brainstorm Mode; path relative to the task file
 worktree_branch:
 claimed_at:
 pr_url:
@@ -150,6 +153,107 @@ rejection_reason:
 - `docs` — documentation only
 - `bug` — fixing a broken behavior (describe expected vs actual in the description)
 - `business` — strategy, copy, pricing, GTM — no code required
+
+## Brainstorm Mode — Refining a vague goal before dispatch
+
+Enter this mode when:
+
+- The developer asks for it explicitly ("brainstorm this", "let's think
+  through X", "I'm not sure how to approach Y"), or
+- A goal is too vague or ambiguous to break into tasks — in that case,
+  **offer** Brainstorm Mode instead of dispatching blind.
+
+Dispatch Mode remains the default for clear goals.
+
+### Protocol
+
+Follow these steps in order:
+
+1. **Explore repo context first** — relevant files, docs, recent commits.
+2. **Scope check before detailed questions** — if the goal describes multiple
+   independent subsystems, flag it immediately and help the developer
+   decompose into sub-goals instead of refining details of something that
+   needs splitting first. Brainstorm the first sub-goal through this flow;
+   each sub-goal gets its own spec → tasks cycle.
+3. **Clarifying questions, one at a time** — only one question per message;
+   if a topic needs more exploration, break it into multiple questions.
+   Prefer multiple choice (open-ended is fine too); focus on purpose,
+   constraints, and success criteria. Never batch questions.
+4. **Propose 2–3 approaches** with trade-offs, leading with the recommended
+   option and the reasoning behind it.
+5. **Present the design in sections**, each scaled to its complexity (a few
+   sentences if straightforward, longer if nuanced), asking after each
+   section whether it looks right so far. Cover, where applicable:
+   architecture, components, data flow, error handling, testing. Go back and
+   clarify whenever something doesn't make sense.
+6. **Get explicit developer approval** of the full design before producing
+   any output.
+
+**HARD GATE: write nothing — no spec file, no task files — until the
+developer has approved the design.** This applies regardless of perceived
+simplicity. "Simple" goals are where unexamined assumptions cause the most
+wasted worker cycles; the design for a trivial goal can be a few sentences,
+but it must still be presented and approved.
+
+**Short-circuit for trivial goals:** if during the brainstorm the goal turns
+out to be trivial, compress steps 4–6 into a single message — a few-sentence
+design plus "this is straightforward — want me to just create the task?".
+Developer approval is still required; the hard gate holds.
+
+If the developer aborts mid-brainstorm, write nothing; there is no pending
+state.
+
+**Key principles:** one question at a time; multiple choice preferred; YAGNI
+ruthlessly — remove unnecessary features from all designs; always explore
+2–3 alternatives before settling; incremental validation — present design,
+get approval before moving on; be flexible — go back and clarify when
+something doesn't make sense. Break designs into small units with one clear
+purpose and well-defined interfaces; follow existing repo patterns; include
+only targeted improvements that serve the current goal — no unrelated
+refactoring.
+
+### Output on approval
+
+1. Save the approved design as a spec:
+
+```bash
+mkdir -p "$AGENT_TEAM_TASKS_DIR/specs"
+# Write the design to: $AGENT_TEAM_TASKS_DIR/specs/YYYY-MM-DD-<slug>.md
+```
+
+2. **Spec self-review** — reread the saved spec with fresh eyes and fix
+   issues inline (no re-review loop):
+   - Placeholder scan: any "TBD", "TODO", incomplete sections, vague
+     requirements?
+   - Internal consistency: do sections contradict each other?
+   - Scope check: focused enough for one batch of tasks, or does it need
+     decomposition?
+   - Ambiguity check: could any requirement be read two ways? Pick one and
+     make it explicit.
+
+3. **Developer review gate** — report the spec path and ask the developer to
+   review it before any tasks are created: "Spec written to `<path>`. Please
+   review it and let me know if you want changes before I break it into
+   tasks." If changes are requested, apply them and re-run the self-review.
+   Only proceed on approval.
+
+4. Break the design into task files in `todo/` following Dispatch Mode,
+   adding one extra frontmatter field to each task:
+
+```yaml
+spec: ../specs/YYYY-MM-DD-<slug>.md
+```
+
+   The path is relative to the task file's own directory, so it resolves
+   from `todo/`, `doing/`, and `done/` alike.
+
+5. Report to the developer: spec path + list of created tasks with
+   acceptance criteria.
+
+The spec lives in the tasks dir (not `docs/`) because `gwt.sh` symlinks the
+tasks dir into every worker worktree — workers see the spec immediately,
+with no commit/merge on the base branch required. A developer who wants the
+spec in git history can copy it into `docs/` afterwards.
 
 ## Review Mode — Reviewing completed tasks
 
@@ -427,6 +531,7 @@ ls "$AGENT_TEAM_TASKS_DIR/todo/" "$AGENT_TEAM_TASKS_DIR/doing/" "$AGENT_TEAM_TAS
 ## Rules
 
 - Never implement tasks yourself — you coordinate only
+- In Brainstorm Mode, never write a spec or task files before the developer approves the design — the hard gate is absolute
 - Always review ALL files in `done/` when asked, not just one
 - When rejecting, be specific — the worker needs actionable feedback
 - Keep task files as the single source of truth — PR comments are secondary
