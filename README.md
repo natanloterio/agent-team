@@ -146,6 +146,37 @@ dispatcher treats these as the primary reap signal. A spinner-line heuristic
 crashed or stuck sessions; it is explicitly fragile and breaks when Claude
 Code's UI strings change. Run `/agent-team:doctor` if reaping misbehaves.
 
+## Security model
+
+Workers are spawned as `claude --dangerously-skip-permissions` in detached
+tmux sessions. This is required for unattended operation: without it, every
+file write, shell command, and tool call would pause and wait for a human to
+approve it in the tmux pane — defeating the purpose of async workers.
+
+Implications you should understand before running agent-team:
+
+- **Workers can run any command in the repo without prompting.** A malicious
+  or buggy task file could delete files, exfiltrate data, or make network
+  requests.
+- **Workers can read your env secrets.** When `worktree.linkEnvFiles` is
+  `true` (the default), `gwt.sh` symlinks every `.env*` file from the main
+  repo into each worktree so dev servers can start. This means any worker has
+  access to those files.
+
+Recommended mitigations:
+
+- Run agent-team on a **dedicated machine or container** that does not hold
+  production secrets, when the task source is untrusted (e.g. Trello cards
+  written by external contributors).
+- Set `worktree.linkEnvFiles: false` in `.agent-team/config.json` when
+  workers do not need env files (e.g. backend tasks that do not start a dev
+  server). Workers will still work; UI review checks that need a running dev
+  server will fail until you re-enable it.
+- **Review the task files** before dispatching workers on sensitive repos,
+  just as you would review a PR from an unknown contributor.
+- Review `scripts/dispatch-workers.sh` and `scripts/gwt.sh` before first
+  run to understand exactly what each worker session can access.
+
 ## Troubleshooting
 
 Run `/agent-team:doctor` first — it checks config validity, daemon liveness
