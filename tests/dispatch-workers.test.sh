@@ -5,7 +5,7 @@ set -euo pipefail
 PLUGIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 ROOT=$(mktemp -d)
-trap 'rm -rf "$ROOT"' EXIT
+trap 'rm -rf "$ROOT"; tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^dispatch-test-" | xargs -r -I{} tmux kill-session -t {} 2>/dev/null || true' EXIT
 git -C "$ROOT" init -q -b main
 mkdir -p "$ROOT/.agent-team"
 echo '{"workerSessionPrefix": "dispatch-test-"}' > "$ROOT/.agent-team/config.json"
