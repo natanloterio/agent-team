@@ -80,6 +80,7 @@ Note: Shell state persists across Bash tool calls in this session, but re-run th
 
 ## Step 6 — Implement the task
 
+- If the task frontmatter has a non-empty `spec:` field, read that file first — the path is relative to the task file's own directory (e.g. `../specs/<name>.md` resolves inside `$AGENT_TEAM_TASKS_DIR`). It is the approved design behind this task; treat it as binding context. If the field is empty or absent, proceed as normal.
 - Read `acceptance_criteria` from the task file — these are your definition of done
 - Use TDD: write failing tests first, then implement
 - Follow all instructions in `CLAUDE.md`
