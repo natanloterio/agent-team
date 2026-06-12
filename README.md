@@ -104,9 +104,11 @@ runs a headless Playwright browser check for `type: ui` tasks, and either
 approves + auto-merges or rejects back to `todo/` with a reason.
 
 Auto-merge applies only to PRs targeting the configured `prBase` branch and
-not opted out via `auto_merge: false` in the task frontmatter. Rejection uses
-`gh pr comment` (not `gh pr review --request-changes`, which fails on
-self-authored PRs).
+not opted out via `auto_merge: false` in the task frontmatter. After a
+successful auto-merge the reviewer also removes the worker's local worktree
+under `.worktrees/` and its local branch — rejected and manually-merged
+tasks keep theirs. Rejection uses `gh pr comment` (not
+`gh pr review --request-changes`, which fails on self-authored PRs).
 
 The reviewer can run standalone or be scheduled with
 `/loop 5m /agent-team:reviewer` for a continuous review cycle. An empty
