@@ -1,0 +1,13 @@
+{
+  "name": "agent-team",
+  "owner": {
+    "name": "Natan Loterio"
+  },
+  "plugins": [
+    {
+      "name": "agent-team",
+      "source": "./",
+      "description": "Multi-session agent team: task queue, worker dispatch, review cycle, optional Trello sync."
+    }
+  ]
+}
