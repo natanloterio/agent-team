@@ -34,7 +34,7 @@ const BOARD_ID = cfg.board.boardId;
 const PRECEDENCE = ["approved", "done", "doing", "todo"]; // higher folder wins
 const FOLDER_TO_LIST = {
   approved: cfg.board.listIds.approved,
-  done: cfg.board.listIds.doing, // still in review — sits in the Doing column
+  done: cfg.board.listIds.done,
   doing: cfg.board.listIds.doing,
   todo: cfg.board.listIds.todo,
 };
@@ -129,11 +129,10 @@ async function tick(creds, announced) {
 
   const cardById = new Map();
   const todoAgentsCardIds = new Set();
+  const managedListIds = new Set(Object.values(FOLDER_TO_LIST));
   const todoListId = cfg.board.listIds.todo;
-  const doingListId = cfg.board.listIds.doing;
-  const doneListId = cfg.board.listIds.done;
   for (const list of lists) {
-    if (list.id !== todoListId && list.id !== doingListId && list.id !== doneListId) continue;
+    if (!managedListIds.has(list.id)) continue;
     for (const card of list.cards) {
       cardById.set(card.id, { idList: list.id, name: card.name });
       if (list.id === todoListId) todoAgentsCardIds.add(card.id);
