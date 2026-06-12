@@ -65,12 +65,22 @@ function validate(cfg, path) {
     fail("prBase must be a non-empty string");
   if (typeof cfg.tasksDir !== "string" || !cfg.tasksDir || cfg.tasksDir.startsWith("/"))
     fail("tasksDir must be a non-empty repo-relative path");
+  if (cfg.tasksDir.split("/").includes(".."))
+    fail("tasksDir must not contain path traversal (..)");
   if (typeof cfg.workerSessionPrefix !== "string" || !cfg.workerSessionPrefix)
     fail("workerSessionPrefix must be a non-empty string");
   if (!Number.isInteger(cfg.staleWorkerSeconds) || cfg.staleWorkerSeconds < 60)
     fail("staleWorkerSeconds must be an integer >= 60");
   if (typeof cfg.worktree.linkEnvFiles !== "boolean")
     fail("worktree.linkEnvFiles must be a boolean");
+  if (cfg.devServer !== null && cfg.devServer !== undefined) {
+    if (typeof cfg.devServer !== "object")
+      fail("devServer must be an object or null");
+    if (typeof cfg.devServer.command !== "string" || !cfg.devServer.command)
+      fail("devServer.command must be a non-empty string");
+    if (typeof cfg.devServer.url !== "string" || !cfg.devServer.url)
+      fail("devServer.url must be a non-empty string");
+  }
   if (!["none", "trello"].includes(cfg.board.provider))
     fail(`board.provider must be "none" or "trello", got ${JSON.stringify(cfg.board.provider)}`);
   if (cfg.board.provider === "trello") {

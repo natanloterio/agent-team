@@ -8,8 +8,8 @@
 // Worktree gotcha is handled by the gwt alias symlinking runtime dirs to the
 // main repo, so folder location is now a reliable source of truth.
 //
-// Start:  pnpm trello-sync
-// Stop:   pnpm trello-sync:stop   (or SIGTERM the PID in .tasks/.trello-sync.pid)
+// Start:  node scripts/trello-sync.mjs
+// Stop:   SIGTERM the PID in .tasks/.trello-sync.pid
 // Log:    .tasks/.trello-sync.log (also stdout)
 
 import {

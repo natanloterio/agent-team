@@ -7,8 +7,11 @@ root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 config="$root/.agent-team/config.json"
 
 if [ -f "$config" ]; then
-  if node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$config" 2>/dev/null; then
+  if command -v node >/dev/null 2>&1 && node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$config" 2>/dev/null; then
     exit 0   # configured and parseable — silent
+  fi
+  if ! command -v node >/dev/null 2>&1; then
+    exit 0   # node absent — fail-soft, no output
   fi
   echo "agent-team: $config exists but is not valid JSON — run /agent-team:setup (or /agent-team:doctor) to repair it."
   exit 0

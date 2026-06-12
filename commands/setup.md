@@ -73,11 +73,11 @@ If no → skip to Phase 4.
    account. Ask for both.
 2. Write them to `.env.agents` as `TRELLO_API_KEY=` / `TRELLO_SECRET=`, and
    ensure `.env.agents` is in `.gitignore` BEFORE writing.
-3. Board: offer (a) create a new board with lists Todo-Agents / Doing / Done
-   via the Trello REST API, or (b) use an existing board — list the user's
-   boards (`GET /1/members/me/boards?fields=name`) and their lists, let them
-   map each queue folder (todo/doing/done/approved) to a list. Folders MAY
-   share a list (e.g. done→Doing while "in review", approved→Done).
+3. Board: offer (a) create a new board with four lists (Todo / Doing / Done /
+   Approved) via the Trello REST API, or (b) use an existing board — list the
+   user's boards (`GET /1/members/me/boards?fields=name`) and their lists, let
+   them map each queue folder (todo/doing/done/approved) to a list. Folders
+   MAY share a list (e.g. done→Doing while "in review", approved→Done).
 4. Persist RESOLVED IDs (never names) into config:
    `board: { provider: "trello", boardId, listIds: {todo, doing, done, approved}, envFile: ".env.agents" }`.
 5. Smoke test: create a card named "agent-team setup test" on the todo list,

@@ -47,6 +47,21 @@ test("trello provider requires boardId, listIds, envFile", () => {
   assert.throws(() => loadConfig(root), /boardId/);
 });
 
+test("devServer with missing command rejected", () => {
+  const root = makeRepo(JSON.stringify({ devServer: { url: "http://localhost:3000" } }));
+  assert.throws(() => loadConfig(root), /devServer\.command/);
+});
+
+test("devServer with missing url rejected", () => {
+  const root = makeRepo(JSON.stringify({ devServer: { command: "npm start" } }));
+  assert.throws(() => loadConfig(root), /devServer\.url/);
+});
+
+test("tasksDir with path traversal rejected", () => {
+  const root = makeRepo(JSON.stringify({ tasksDir: "../evil" }));
+  assert.throws(() => loadConfig(root), /tasksDir/);
+});
+
 test("--print-env emits shell-safe lines; exit 3 when unconfigured", () => {
   const ok = makeRepo(JSON.stringify({ prBase: "dev", maxWorkers: 8 }));
   const out = execFileSync("node", ["scripts/lib/config.mjs", "--print-env"],

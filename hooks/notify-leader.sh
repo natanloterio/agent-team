@@ -19,7 +19,7 @@ payload=$(cat)
 # symlinked into every worktree by `gwt`, but `git rev-parse --show-toplevel`
 # from a worktree returns the worktree path, not main, so go through
 # `git worktree list`).
-root=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
+root=$(git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -1)
 [ -z "$root" ] && exit 0
 
 tasksdir=$(node -e "

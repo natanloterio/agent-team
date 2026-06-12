@@ -56,13 +56,13 @@ if [ "$AGENT_TEAM_BOARD_PROVIDER" = "trello" ]; then
     fi
   fi
 
-  # Show recent NEW_CARD alerts (cards in Todo-Agents that don't yet have a task file)
+  # Show recent NEW_CARD alerts (cards in the configured todo list that don't yet have a task file)
   echo "--- Recent NEW_CARD alerts ---"
   tail -n 200 "$AGENT_TEAM_TASKS_DIR/.trello-sync.log" 2>/dev/null | grep "NEW_CARD:" | tail -n 10
 fi
 ```
 
-If any `NEW_CARD:` lines appear, tell the developer "N new cards waiting in Todo-Agents — say 'sync from Trello' to convert them into task files."
+If any `NEW_CARD:` lines appear, tell the developer "N new cards waiting in the configured todo list — say 'sync from Trello' to convert them into task files."
 
 After the daemon startup (and Trello/NEW_CARD report if applicable), immediately run **Worker Dispatch Mode** (below) and arm the event-driven watcher.
 

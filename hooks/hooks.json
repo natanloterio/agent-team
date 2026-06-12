@@ -2,13 +2,13 @@
   "hooks": {
     "SessionStart": [
       { "hooks": [
-        { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh" },
-        { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-leader.sh" }
+        { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/session-start.sh" },
+        { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/notify-leader.sh" }
       ] }
     ],
-    "Stop":         [ { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-leader.sh" } ] } ],
-    "SubagentStop": [ { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-leader.sh" } ] } ],
-    "Notification": [ { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-leader.sh" } ] } ],
-    "SessionEnd":   [ { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify-leader.sh" } ] } ]
+    "Stop":         [ { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/notify-leader.sh" } ] } ],
+    "SubagentStop": [ { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/notify-leader.sh" } ] } ],
+    "Notification": [ { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/notify-leader.sh" } ] } ],
+    "SessionEnd":   [ { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/notify-leader.sh" } ] } ]
   }
 }

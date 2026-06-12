@@ -124,8 +124,8 @@ secrets — credentials live in a gitignored file referenced by `board.envFile`.
 | `board.listIds.approved` | string | — | Resolved list ID for `approved/` |
 | `board.envFile` | string | — | Gitignored file holding `TRELLO_API_KEY` / `TRELLO_SECRET` |
 
-List IDs are stored resolved (numeric Trello IDs, not names), eliminating the
-empty-ID-from-name-lookup bug class at runtime. Keys may intentionally share
+List IDs are stored resolved (24-character hex Trello IDs, not names), eliminating
+the empty-ID-from-name-lookup bug class at runtime. Keys may intentionally share
 IDs — for example, mapping `done` and `doing` to the same Trello column while
 tasks are in review.
 

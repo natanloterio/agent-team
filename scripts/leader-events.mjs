@@ -9,11 +9,11 @@
 // daemon just lets the team-leader react in real time.
 //
 // Listens on a Unix socket at .tasks/.leader-events.sock (no TCP port, no
-// cross-project conflicts). The hook bridge at .claude/hooks/notify-leader.sh
+// cross-project conflicts). The hook bridge at hooks/notify-leader.sh
 // posts JSON payloads to it via `curl --unix-socket`.
 //
-// Start:  pnpm leader-events
-// Stop:   pnpm leader-events:stop   (or SIGTERM the PID in .tasks/.leader-events.pid)
+// Start:  node scripts/leader-events.mjs
+// Stop:   SIGTERM the PID in .tasks/.leader-events.pid
 // Log:    .tasks/.leader-events.log (also stdout)
 
 import {
