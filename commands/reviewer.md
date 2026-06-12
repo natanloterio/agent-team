@@ -79,7 +79,7 @@ If `done/` is empty, report "Nothing in done/ to review." and stop. This keeps `
 ```bash
 for TASK_PATH in $FILES; do
   TASK_FILE=$(basename "$TASK_PATH")
-  # run Steps A-E below using $TASK_FILE
+  # run Steps A-F below using $TASK_FILE (F only on Pass with auto-merge)
 done
 ```
 
@@ -94,6 +94,7 @@ PREVIEW_PATH=$(grep "^preview_path:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | s
 SLUG=$(basename "$TASK_FILE" .md | sed 's/^[0-9-]*-//')
 AUTO_MERGE=$(grep "^auto_merge:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | sed 's/^auto_merge: *//')
 WORKTREE_BRANCH=$(grep "^worktree_branch:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | sed 's/^worktree_branch: *//')
+MERGE_ENABLED="no"
 ```
 
 If `PR_URL` is empty, treat as Fail with reason "pr_url missing in frontmatter — worker did not record PR".
@@ -231,7 +232,6 @@ gh pr review "$PR_URL" --approve --body "Acceptance criteria verified. Approved 
 
 # Auto-merge — only if PR targets the configured base branch
 # AND the task does not opt out via auto_merge: false
-MERGE_ENABLED="no"
 if [ "$BASE_REF" = "$AGENT_TEAM_PR_BASE" ] && [ "$AUTO_MERGE" != "false" ]; then
   if gh pr merge "$PR_URL" --auto --merge --delete-branch; then
     MERGE_ENABLED="yes"
@@ -279,7 +279,13 @@ tasks, or PRs targeting a non-base branch — those keep their worktrees.
 ```bash
 CLEANUP_RESULT="skipped"
 if [ "$MERGE_ENABLED" = "yes" ]; then
-  CLEANUP_WORKTREE=$(ls -d "${AGENT_TEAM_ROOT}/.worktrees/"*"${SLUG}"* 2>/dev/null | head -1)
+  # Resolve the worktree by branch — exact match, never by name substring
+  # (slugs can be substrings of one another; a fuzzy match could delete
+  # another task's in-progress worktree)
+  CLEANUP_WORKTREE=$(git -C "$AGENT_TEAM_ROOT" worktree list --porcelain \
+    | awk -v ref="refs/heads/$WORKTREE_BRANCH" '
+        /^worktree /{wt=substr($0,10)}
+        /^branch /{if ($2==ref) print wt}' | head -1)
   if [ -z "$CLEANUP_WORKTREE" ] && [ -z "$WORKTREE_BRANCH" ]; then
     CLEANUP_RESULT="skipped: no worktree or branch recorded"
   else
@@ -288,7 +294,7 @@ if [ "$MERGE_ENABLED" = "yes" ]; then
       git -C "$AGENT_TEAM_ROOT" worktree remove --force "$CLEANUP_WORKTREE" \
         || CLEANUP_RESULT="WARNING: worktree remove failed for $CLEANUP_WORKTREE"
     fi
-    if [ -n "$WORKTREE_BRANCH" ]; then
+    if [ -n "$WORKTREE_BRANCH" ] && [ "$WORKTREE_BRANCH" != "$AGENT_TEAM_PR_BASE" ]; then
       git -C "$AGENT_TEAM_ROOT" branch -D "$WORKTREE_BRANCH" 2>/dev/null \
         || true   # branch may not exist locally — not a warning
     fi

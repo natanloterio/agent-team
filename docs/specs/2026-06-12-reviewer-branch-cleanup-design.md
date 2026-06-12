@@ -26,9 +26,12 @@ Brainstorm Mode.
 
 Step F runs after Step E's Pass branch, per task:
 
-1. Locate the worker's worktree with the same discovery used by the UI
-   check: `ls -d "${AGENT_TEAM_ROOT}/.worktrees/"*"${SLUG}"*`. Step F must
-   run **after** Step D, which needs the worktree alive.
+1. Resolve the worker's worktree by branch: parse
+   `git worktree list --porcelain` for the entry whose branch is
+   `refs/heads/<worktree_branch>`. Never match by name substring — slugs can
+   be substrings of one another, and a fuzzy match could force-delete
+   another task's in-progress worktree. Step F must still run **after**
+   Step D, which needs the worktree alive.
 2. Read `worktree_branch` from the task frontmatter.
 3. Clean up from the main repo:
    - `git -C "$AGENT_TEAM_ROOT" worktree remove --force "<worktree-path>"`
