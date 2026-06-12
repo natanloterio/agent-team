@@ -18,24 +18,44 @@ If the config load fails, stop immediately.
 
 ## Step 0 — Bootstrap recurring loop (first invocation only)
 
-On the **first** invocation of `/agent-team:reviewer` in a session, schedule yourself to re-run every 5 minutes. On subsequent invocations (loop ticks), skip this step and go straight to Step 1.
+On the **first** invocation of `/agent-team:reviewer` in a session, schedule yourself to re-run every 5 minutes. On subsequent invocations within the same 60-minute window, skip this step and go straight to Step 1.
 
 ```bash
 LOOP_MARKER="$AGENT_TEAM_TASKS_DIR/.reviewer-loop-active"
-if [ ! -f "$LOOP_MARKER" ]; then
-  mkdir -p "$AGENT_TEAM_TASKS_DIR"
+mkdir -p "$AGENT_TEAM_TASKS_DIR"
+# Detect stat flavor (Linux: stat -c %Y; macOS: stat -f %m)
+if stat -c %Y / >/dev/null 2>&1; then
+  _marker_mtime() { stat -c %Y "$1" 2>/dev/null; }
+else
+  _marker_mtime() { stat -f %m "$1" 2>/dev/null; }
+fi
+NOW_SECS=$(date +%s)
+BOOTSTRAP_LOOP=true
+if [ -f "$LOOP_MARKER" ]; then
+  MARKER_MTIME=$(_marker_mtime "$LOOP_MARKER")
+  if [ -n "$MARKER_MTIME" ]; then
+    MARKER_AGE=$(( NOW_SECS - MARKER_MTIME ))
+    if [ "$MARKER_AGE" -lt 3600 ]; then
+      BOOTSTRAP_LOOP=false
+      echo "BOOTSTRAP_LOOP=false (loop active since $(cat "$LOOP_MARKER"), ${MARKER_AGE}s ago)"
+    fi
+  fi
+fi
+if [ "$BOOTSTRAP_LOOP" = "true" ]; then
   date -u +"%Y-%m-%dT%H:%M:%SZ" > "$LOOP_MARKER"
   echo "BOOTSTRAP_LOOP=true"
-else
-  echo "BOOTSTRAP_LOOP=false (loop already active since $(cat "$LOOP_MARKER"))"
 fi
 ```
 
-If the output shows `BOOTSTRAP_LOOP=true`, invoke the `loop` skill via the Skill tool with `args: "5m /agent-team:reviewer"` to start the recurring review. The Skill tool call schedules the loop and the framework will fire `/agent-team:reviewer` every 5 minutes — each tick re-enters this protocol, sees the marker, and goes directly to Step 1.
+If the output shows `BOOTSTRAP_LOOP=true`, invoke the `loop` skill via the Skill tool with `args: "5m /agent-team:reviewer"` to start the recurring review. The Skill tool call schedules the loop and the framework will fire `/agent-team:reviewer` every 5 minutes — each tick re-enters this protocol, sees the marker (while it is younger than 60 minutes), and goes directly to Step 1.
 
 If `BOOTSTRAP_LOOP=false`, the loop is already armed — proceed directly to Step 1 without invoking `loop` again (prevents nested/duplicate schedulers).
 
+The marker is automatically refreshed after 60 minutes, so a crashed or expired loop scheduler is recovered on the next manual invocation or when the marker ages out.
+
 The marker lives at `$AGENT_TEAM_TASKS_DIR/.reviewer-loop-active` (gitignored runtime state). Delete it manually only if you explicitly want a fresh loop to be scheduled on the next invocation.
+
+Note: the `loop` skill may not be available in every Claude Code installation. If invoking it fails, tell the user: reviews ran once; to schedule recurring reviews run `/loop 5m /agent-team:reviewer` if they have the loop skill, or re-invoke `/agent-team:reviewer` manually.
 
 ## Step 1 — Walk done/
 
@@ -259,5 +279,5 @@ If wrapped in `/loop`, this summary becomes the per-tick output; keep it short.
 - Move task files atomically with `mv` — never copy+delete
 - When board.provider is trello, do NOT issue manual `curl` calls to move Trello cards — the trello-sync daemon syncs based on folder location (within 60s)
 - Designed to be safe to run on a loop: empty `done/` → silent exit, no side effects
-- The 5-minute auto-loop is bootstrapped from Step 0 using `$AGENT_TEAM_TASKS_DIR/.reviewer-loop-active` as a one-time marker — never schedule a second loop while the marker exists
+- The 5-minute auto-loop is bootstrapped from Step 0 using `$AGENT_TEAM_TASKS_DIR/.reviewer-loop-active` as a time-stamped marker — the marker goes stale after 60 minutes so a dead scheduler is automatically recovered; never schedule a second loop while the marker is younger than 60 minutes
 - `auto_merge: false` in the task frontmatter means approve-but-never-merge — the human merges manually (absent field = legacy behavior, merge allowed)
