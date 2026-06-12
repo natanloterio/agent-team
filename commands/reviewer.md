@@ -93,6 +93,7 @@ PR_URL=$(grep "^pr_url:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | sed 's/^pr_ur
 PREVIEW_PATH=$(grep "^preview_path:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | sed 's/^preview_path: *//')
 SLUG=$(basename "$TASK_FILE" .md | sed 's/^[0-9-]*-//')
 AUTO_MERGE=$(grep "^auto_merge:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | sed 's/^auto_merge: *//')
+WORKTREE_BRANCH=$(grep "^worktree_branch:" "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" | sed 's/^worktree_branch: *//')
 ```
 
 If `PR_URL` is empty, treat as Fail with reason "pr_url missing in frontmatter — worker did not record PR".
@@ -230,10 +231,14 @@ gh pr review "$PR_URL" --approve --body "Acceptance criteria verified. Approved 
 
 # Auto-merge — only if PR targets the configured base branch
 # AND the task does not opt out via auto_merge: false
+MERGE_ENABLED="no"
 if [ "$BASE_REF" = "$AGENT_TEAM_PR_BASE" ] && [ "$AUTO_MERGE" != "false" ]; then
-  gh pr merge "$PR_URL" --auto --merge --delete-branch \
-    && echo "Auto-merge enabled for $PR_URL" \
-    || echo "WARNING: auto-merge failed for $PR_URL — needs manual merge"
+  if gh pr merge "$PR_URL" --auto --merge --delete-branch; then
+    MERGE_ENABLED="yes"
+    echo "Auto-merge enabled for $PR_URL"
+  else
+    echo "WARNING: auto-merge failed for $PR_URL — needs manual merge"
+  fi
 elif [ "$AUTO_MERGE" = "false" ]; then
   echo "Task has auto_merge: false — approved but NOT merged. Surfaces in the report under 'Awaiting manual merge'."
 else
@@ -264,6 +269,40 @@ mv "$AGENT_TEAM_TASKS_DIR/done/$TASK_FILE" "$AGENT_TEAM_TASKS_DIR/todo/$TASK_FIL
 gh pr comment "$PR_URL" --body "❌ Rejected by /agent-team:reviewer: $REJECTION_REASON"
 ```
 
+### Step F — Branch cleanup (Pass path with auto-merge only)
+
+Run only when the verdict was Pass **and** `MERGE_ENABLED=yes`. The worker's
+work is on the remote (PR approved, auto-merge armed), so the local worktree
+and branch are disposable. Never run this for rejections, `auto_merge: false`
+tasks, or PRs targeting a non-base branch — those keep their worktrees.
+
+```bash
+CLEANUP_RESULT="skipped"
+if [ "$MERGE_ENABLED" = "yes" ]; then
+  CLEANUP_WORKTREE=$(ls -d "${AGENT_TEAM_ROOT}/.worktrees/"*"${SLUG}"* 2>/dev/null | head -1)
+  if [ -z "$CLEANUP_WORKTREE" ] && [ -z "$WORKTREE_BRANCH" ]; then
+    CLEANUP_RESULT="skipped: no worktree or branch recorded"
+  else
+    CLEANUP_RESULT="done"
+    if [ -n "$CLEANUP_WORKTREE" ]; then
+      git -C "$AGENT_TEAM_ROOT" worktree remove --force "$CLEANUP_WORKTREE" \
+        || CLEANUP_RESULT="WARNING: worktree remove failed for $CLEANUP_WORKTREE"
+    fi
+    if [ -n "$WORKTREE_BRANCH" ]; then
+      git -C "$AGENT_TEAM_ROOT" branch -D "$WORKTREE_BRANCH" 2>/dev/null \
+        || true   # branch may not exist locally — not a warning
+    fi
+    git -C "$AGENT_TEAM_ROOT" worktree prune
+  fi
+fi
+echo "Cleanup: $CLEANUP_RESULT"
+```
+
+`--force` and `-D` are safe here: the remote branch holds everything; the
+worktree is a disposable checkout and stray untracked files in it are
+expected. A cleanup failure is a WARNING in the summary — it never fails the
+review or blocks the task's move to `approved/`.
+
 ## Step 3 — Final summary
 
 After the loop, print:
@@ -271,7 +310,7 @@ After the loop, print:
 ```
 Reviewed N task(s):
   ✅ Approved: <count>
-    - <title> — <pr_url> — auto-merge: <enabled|skipped: targets non-base branch|failed>
+    - <title> — <pr_url> — auto-merge: <enabled|skipped: targets non-base branch|failed> — cleanup: <done|skipped|WARNING: reason>
   ❌ Rejected: <count>
     - <title> — back to todo/ — reason: <reason>
 ```
@@ -281,6 +320,7 @@ If wrapped in `/loop`, this summary becomes the per-tick output; keep it short.
 ## Rules
 
 - Read-only on the PR — never push commits, never modify worker code
+- Local cleanup only on the Pass+auto-merge path: remove the worker's worktree and local branch (Step F); rejections, `auto_merge: false`, and non-base PRs keep their worktrees
 - For UI tasks, never skip the headless browser check
 - Approval requires CI green or only-deploy-preview-pending (deploy-preview checks such as Vercel may stay pending). Treat FAILING checks as Fail.
 - PRs not targeting `$AGENT_TEAM_PR_BASE` get approved but NEVER auto-merged — flag for human
