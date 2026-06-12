@@ -51,7 +51,7 @@ If `mv` exits non-zero, another session claimed it; go back to Step 1 and pick t
 Derive the branch name and set it as a shell variable:
 
 ```bash
-SLUG=$(basename $TASK_FILE .md | sed 's/^[0-9]*-//')
+SLUG=$(basename $TASK_FILE .md | sed 's/^[0-9-]*-//')
 WORKTREE_BRANCH="feat/$SLUG"
 ```
 
