@@ -30,9 +30,13 @@ Ask, one question at a time (suggest detected defaults):
 1. PR base branch (default: the repo's default branch from `gh repo view --json defaultBranchRef`)
 2. Max concurrent workers (default 4)
 3. Dev server command + URL for UI-task review checks (or "none" — UI tasks
-   will then fail review with a clear reason until configured)
+   will then fail review with a clear reason until configured). If they
+   configured a devServer, mention: UI-task reviews get full console-error
+   capture only when `playwright` is installed as a devDependency in the
+   repo; otherwise a screenshot-only fallback is used.
 4. Symlink `.env*` files into worktrees? (explain: workers usually need env
-   to run dev servers, but this links secrets into every worktree)
+   to run dev servers, but this links secrets into every worktree; note
+   workers run unattended with permission prompts disabled)
 
 Then write `.agent-team/config.json`:
 

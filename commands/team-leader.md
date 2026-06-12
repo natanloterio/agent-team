@@ -218,6 +218,8 @@ console.log(c.devServer?.url || '');
     echo "ERROR: devServer not configured — run /agent-team:setup. UI check cannot proceed."
     UI_CHECK_RESULT="fail"
   else
+    # Check whether playwright is installed in the consumer repo's node_modules
+    PLAYWRIGHT_AVAILABLE=$(cd "${WORKTREE}" && node -e "require.resolve('playwright')" 2>/dev/null && echo "yes" || echo "no")
     # Write and run a self-contained UI check script
     UI_SCRIPT=$(mktemp /tmp/ui-check-XXXX.sh)
     chmod +x "$UI_SCRIPT"
@@ -225,9 +227,6 @@ console.log(c.devServer?.url || '');
 #!/bin/bash
 set -e
 SCREENSHOT="/tmp/ui-check-${SLUG}.png"
-
-# Install Playwright browser if needed
-npx --yes playwright@latest install chromium --with-deps 2>/dev/null || true
 
 # Start dev server in background
 (cd "${WORKTREE}" && $DEV_CMD) &
@@ -244,8 +243,9 @@ until curl -sf ${DEV_URL} > /dev/null 2>&1; do
   fi
 done
 
-# Run headless browser check
-node -e "
+if [ "${PLAYWRIGHT_AVAILABLE}" = "yes" ]; then
+  # Full-fidelity check: console-error capture + screenshot
+  node -e "
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch();
@@ -254,14 +254,20 @@ const { chromium } = require('playwright');
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
   await page.goto('${DEV_URL}${PREVIEW_PATH}');
   await page.waitForLoadState('networkidle');
-  await page.screenshot({ path: '${SCREENSHOT}' });
+  await page.screenshot({ path: '\${SCREENSHOT}' });
   await browser.close();
   if (errors.length) { console.error('Console errors:', JSON.stringify(errors)); process.exit(1); }
 })();
 "
+else
+  # Fallback: CLI screenshot only (no console-error capture)
+  npx --yes playwright@latest install chromium --with-deps 2>/dev/null || true
+  npx --yes playwright@latest screenshot --wait-for-timeout=5000 "${DEV_URL}${PREVIEW_PATH}" "\${SCREENSHOT}"
+  echo "playwright package not installed in this repo — ran CLI screenshot fallback (no console-error capture). For full-fidelity UI checks add playwright as a devDependency."
+fi
 
 echo "UI_CHECK_PASSED"
-echo "Screenshot: \$SCREENSHOT"
+echo "Screenshot: \${SCREENSHOT}"
 SCRIPT
 
     # Run it

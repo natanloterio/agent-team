@@ -157,12 +157,12 @@ console.log(c.devServer?.url || '');
   else
     UI_SCRIPT=$(mktemp /tmp/ui-check-XXXX.sh)
     chmod +x "$UI_SCRIPT"
+    # Check whether playwright is installed in the consumer repo's node_modules
+    PLAYWRIGHT_AVAILABLE=$(cd "${WORKTREE}" && node -e "require.resolve('playwright')" 2>/dev/null && echo "yes" || echo "no")
     cat > "$UI_SCRIPT" << SCRIPT
 #!/bin/bash
 set -e
 SCREENSHOT="/tmp/ui-check-${SLUG}.png"
-
-npx --yes playwright@latest install chromium --with-deps 2>/dev/null || true
 
 (cd "${WORKTREE}" && $DEV_CMD) &
 DEV_PID=\$!
@@ -177,7 +177,8 @@ until curl -sf ${DEV_URL} > /dev/null 2>&1; do
   fi
 done
 
-node -e "
+if [ "${PLAYWRIGHT_AVAILABLE}" = "yes" ]; then
+  node -e "
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch();
@@ -186,14 +187,19 @@ const { chromium } = require('playwright');
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
   await page.goto('${DEV_URL}${PREVIEW_PATH}');
   await page.waitForLoadState('networkidle');
-  await page.screenshot({ path: '${SCREENSHOT}' });
+  await page.screenshot({ path: '\${SCREENSHOT}' });
   await browser.close();
   if (errors.length) { console.error('Console errors:', JSON.stringify(errors)); process.exit(1); }
 })();
 "
+else
+  npx --yes playwright@latest install chromium --with-deps 2>/dev/null || true
+  npx --yes playwright@latest screenshot --wait-for-timeout=5000 "${DEV_URL}${PREVIEW_PATH}" "\${SCREENSHOT}"
+  echo "playwright package not installed in this repo — ran CLI screenshot fallback (no console-error capture). For full-fidelity UI checks add playwright as a devDependency."
+fi
 
 echo "UI_CHECK_PASSED"
-echo "Screenshot: \$SCREENSHOT"
+echo "Screenshot: \${SCREENSHOT}"
 SCRIPT
 
     if bash "$UI_SCRIPT"; then
