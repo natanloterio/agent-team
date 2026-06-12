@@ -104,7 +104,8 @@ if [ "$SLOTS" -le 0 ]; then
   exit 0
 fi
 
-mapfile -t TODOS < <(ls "$AGENT_TEAM_TASKS_DIR"/todo/*.md 2>/dev/null | sort | head -n "$SLOTS")
+TODOS=()
+while IFS= read -r f; do TODOS+=("$f"); done < <(find "$AGENT_TEAM_TASKS_DIR/todo" -maxdepth 1 -name '*.md' 2>/dev/null | sort | head -n "$SLOTS")
 if [ ${#TODOS[@]} -eq 0 ]; then
   echo "No unclaimed tasks in $AGENT_TEAM_TASKS_DIR/todo/."
   exit 0
