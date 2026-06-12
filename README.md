@@ -67,10 +67,11 @@ The leader also starts the leader-events daemon (receives Stop/Notification
 events from worker sessions via a Unix socket) and the Trello sync daemon when
 `board.provider` is `"trello"`.
 
-For vague or ambiguous goals, the leader offers **Brainstorm Mode**: a
-structured refinement loop (clarifying questions one at a time, 2–3
-approaches with trade-offs, sectioned design review) that writes nothing
-until the developer approves the design. On approval it saves a spec to
+For vague or ambiguous goals — or on request ("brainstorm this") — the
+leader offers **Brainstorm Mode**: a structured refinement loop
+(clarifying questions one at a time, 2–3 approaches with trade-offs,
+sectioned design review) that writes nothing until the developer
+approves the design. On approval it saves a spec to
 `<tasksDir>/specs/` — visible to every worker worktree via the `gwt.sh`
 symlink — and breaks it into task files whose frontmatter carries an
 optional `spec:` field pointing back to it. Workers read the spec before
