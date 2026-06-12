@@ -1,0 +1,27 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install tmux + shellcheck (ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
+      - name: Install tmux + shellcheck (macos)
+        if: runner.os == 'macOS'
+        run: brew install tmux shellcheck
+      - name: Node tests
+        run: node --test 'tests/*.test.mjs'
+      - name: Dispatch smoke test
+        run: bash tests/dispatch-workers.test.sh
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh hooks/*.sh tests/*.sh
