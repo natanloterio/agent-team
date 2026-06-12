@@ -35,7 +35,9 @@ Step F runs after Step E's Pass branch, per task:
 2. Read `worktree_branch` from the task frontmatter.
 3. Clean up from the main repo:
    - `git -C "$AGENT_TEAM_ROOT" worktree remove --force "<worktree-path>"`
-   - `git -C "$AGENT_TEAM_ROOT" branch -D "<worktree_branch>"`
+   - `git -C "$AGENT_TEAM_ROOT" branch -D "<worktree_branch>"` — guarded:
+     never when `<worktree_branch>` equals the configured `prBase`
+     (frontmatter is worker-written input)
    - `git -C "$AGENT_TEAM_ROOT" worktree prune`
 4. Any cleanup failure is a WARNING in the final summary — it never fails
    the review or blocks the task's move to `approved/`. The merge is already
@@ -58,8 +60,9 @@ stale local perspective).
   may still want the worktree (e.g. to re-run checks).
 - **PRs targeting a non-base branch** — approved but flagged for human;
   same reasoning.
-- Missing worktree or empty `worktree_branch` — skip silently with a note;
-  nothing to clean.
+- Missing worktree AND empty `worktree_branch` — skip with a note; nothing
+  to clean. When only one of the two exists, clean whichever is present
+  (e.g. delete a lingering branch whose worktree was removed by hand).
 
 ## Reporting
 
