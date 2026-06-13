@@ -13,23 +13,9 @@ worker finishes, so nothing sits idle waiting for the next tick.
 
 > 🎥 **New here?** Watch the [walkthrough video](https://www.youtube.com/watch?v=qWWWYjdr_l0) for a guided tour of how to use the project.
 
-```
-        you describe a goal
-                │
-                ▼
-        ┌───────────────┐
-        │  team-leader  │  plans → writes tasks
-        └───────┬───────┘
-                ▼
-            todo/  ──────────► ┌─────────┐
-                               │ workers │  build in isolated worktrees, open PRs
-            done/  ◄────────── └─────────┘
-                │
-                ▼
-        ┌───────────────┐
-        │   reviewer    │  verifies + auto-merges passing PRs
-        └───────────────┘
-```
+<p align="center">
+  <img src="docs/images/workflow.svg" alt="agent-team workflow: you describe a goal, the team-leader writes tasks into todo/, workers build them in isolated worktrees and open PRs into done/, and the reviewer verifies and auto-merges passing PRs." width="560">
+</p>
 
 ## Quick start
 
