@@ -84,10 +84,37 @@ If no → skip to Phase 4.
    move it to the done list, delete it. All three calls must return 200.
    Report "Trello connected".
 
-## Phase 4 — Wrap up
+## Phase 4 — Optional shell shortcut (`agent-watch`)
+
+Ask: "Add an `agent-watch` shell shortcut to open the live workers dashboard
+from any terminal? (optional — this edits your shell rc files.)"
+If no → skip to Phase 5.
+
+The shortcut function ships with the plugin at
+`scripts/agent-team-shortcut.sh`; the rc files only `source` it, so it updates
+with the plugin. This is the ONLY step that writes outside the repo, so it is
+opt-in. Add an idempotent source line to each shell rc the user has
+(`~/.bashrc` and/or `~/.zshrc` — only the ones that exist):
+
+```bash
+LINE='[ -f "$HOME/.claude/plugins/marketplaces/agent-team/scripts/agent-team-shortcut.sh" ] && source "$HOME/.claude/plugins/marketplaces/agent-team/scripts/agent-team-shortcut.sh"  # agent-team:agent-watch'
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+  [ -f "$rc" ] || continue
+  grep -q 'agent-team:agent-watch' "$rc" || printf '\n%s\n' "$LINE" >> "$rc"
+done
+```
+
+Tell the user to open a new terminal (or `source` the rc) and then run
+`agent-watch` from inside a configured repo. Mention the flags (`--here`,
+`--once`) and the multi-project note: distinct `workerSessionPrefix` per repo
+plus `MONITOR=<name> agent-watch` to keep dashboards separate.
+
+## Phase 5 — Wrap up
 
 1. Run the doctor checks (see /agent-team:doctor sections 1-3) as final validation.
 2. Tell the user how to start:
    - leader session: `/agent-team:team-leader`
    - the leader dispatches workers automatically; manual worker: `/agent-team:worker`
    - reviews: automatic on task completion, or `/agent-team:reviewer`
+   - watch the team: `agent-watch` (if the shortcut was installed) or
+     `bash scripts/watch-workers.sh`

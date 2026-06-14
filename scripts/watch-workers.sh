@@ -103,6 +103,17 @@ env_out=$(node "$SCRIPT_DIR/lib/config.mjs" --print-env) || {
 eval "$env_out"
 PREFIX="$AGENT_TEAM_WORKER_PREFIX"   # authoritative value from config
 
+# Default the monitor session name off the worker prefix, so dashboards for
+# different projects (which should use distinct prefixes) never collide on a
+# single shared session. An explicit AGENT_TEAM_MONITOR_SESSION always wins;
+# the resolved value is passed down to panes/controller via pane_cmd, keeping
+# every spawned process consistent.
+if [ -z "${AGENT_TEAM_MONITOR_SESSION:-}" ]; then
+  slug=$(printf '%s' "$PREFIX" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')
+  MONITOR="agent-team-monitor${slug:+-$slug}"
+  AGENTS_WIN="$MONITOR:agents"
+fi
+
 INTERVAL=2
 AUTO=1
 MODE=open
