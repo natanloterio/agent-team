@@ -78,7 +78,7 @@ case "${1:-}" in
           tmux select-layout -t "$AGENTS_WIN" tiled >/dev/null 2>&1 || true
           ph=$(tmux list-panes -t "$AGENTS_WIN" -F '#{pane_id} #{pane_title}' \
                  2>/dev/null | awk '$2=="_waiting"{print $1}')
-          [ -n "$ph" ] && tmux kill-pane -t "$ph" 2>/dev/null || true
+          if [ -n "$ph" ]; then tmux kill-pane -t "$ph" 2>/dev/null || true; fi
         fi
       done < <(list_workers)
       sleep 3
@@ -145,7 +145,7 @@ build_dashboard() {
     pid=$(tmux list-panes -t "$AGENTS_WIN" -F '#{pane_id}' | head -1)
     tmux select-pane -t "$pid" -T "$first"
     while IFS= read -r w; do
-      [ -n "$w" ] && [ "$w" != "$first" ] || continue
+      if [ -z "$w" ] || [ "$w" = "$first" ]; then continue; fi
       npid=$(tmux split-window -t "$AGENTS_WIN" -P -F '#{pane_id}' "$(pane_cmd "__pane $w $INTERVAL")")
       tmux select-pane -t "$npid" -T "$w"
       tmux select-layout -t "$AGENTS_WIN" tiled >/dev/null 2>&1 || true
