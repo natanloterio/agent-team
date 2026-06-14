@@ -9,6 +9,11 @@ window.
 bash scripts/watch-workers.sh
 ```
 
+If you let `/agent-team:setup` install the optional shell shortcut, you can run
+`agent-watch` (with the same flags) from any configured repo instead — it ships
+with the plugin at `scripts/agent-team-shortcut.sh` and your shell rc just
+sources it. See [Phase 4 of setup](../commands/setup.md) for the opt-in.
+
 One pane per `agent-worker-*` session, each mirroring that worker's output, with
 the worker's name on the pane border. Detach with `Ctrl-b d` — the workers (and
 the dashboard) keep running. Re-run the command to re-attach.
@@ -79,13 +84,32 @@ dashboard session described below.
 
 The dashboard lives in its own tmux session, separate from the workers:
 
-- Default name: `agent-team-monitor` (override with the
-  `AGENT_TEAM_MONITOR_SESSION` environment variable).
+- Name: derived from the worker prefix as `agent-team-monitor-<prefix>` (the
+  trailing dash is dropped), so the default `agent-worker-` prefix yields
+  `agent-team-monitor-agent-worker`. This keeps dashboards for different
+  projects on separate sessions automatically. Override with the
+  `AGENT_TEAM_MONITOR_SESSION` environment variable.
 - It has two windows: `agents` (the tiled worker view) and `_control` (the
   background controller that adds panes for new workers).
-- Killing it (`tmux kill-session -t agent-team-monitor`) affects nothing else —
-  the workers keep running.
+- Killing it (`tmux kill-session -t agent-team-monitor-<prefix>`) affects
+  nothing else — the workers keep running.
 
 The worker session prefix it watches (`agent-worker-` by default) comes from
 your `.agent-team/config.json`, so the script needs a configured repo. Run
 `/agent-team:setup` first if it reports "not configured."
+
+## Running multiple projects at once
+
+tmux sessions are global per user, and the dashboard simply matches every
+session named `<workerSessionPrefix>*`. So if several projects all use the
+default prefix, one watcher shows **all** their workers pooled together — and
+their workers even collide on the same session names when spawned. The fix is a
+distinct prefix per project:
+
+- Give each repo a distinct `workerSessionPrefix` in its `.agent-team/config.json`
+  (e.g. `proj-a-worker-`, `proj-b-worker-`). Each `watch-workers.sh` loads the
+  config of the repo it's launched from, so it only sees that project's workers.
+- The monitor session name is derived from that prefix, so each project's
+  dashboard lands on its own session automatically — no manual
+  `AGENT_TEAM_MONITOR_SESSION` needed. Set it (or `MONITOR=<name> agent-watch`)
+  only if you want to override the derived name.
