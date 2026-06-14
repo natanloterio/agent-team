@@ -71,11 +71,34 @@ Each role is a Claude Code session you start with a slash command. See
 | **Worker** | `/agent-team:worker` | Claims one task, builds it in an isolated worktree following TDD, opens a PR. |
 | **Reviewer** | `/agent-team:reviewer` | Verifies acceptance criteria, runs UI checks, auto-merges passing PRs or rejects with a reason. |
 
-> Watch a worker live with `tmux attach -t <session-name>`.
+> Watch a single worker live with `tmux attach -t <session-name>`.
+
+## Watch the whole team in one view
+
+To see **every** worker at once instead of attaching to them one by one, open
+the live dashboard:
+
+```
+bash scripts/watch-workers.sh
+```
+
+It opens a tmux session that tiles every running `agent-worker-*` session into a
+single window — one pane per worker, each mirroring that worker's output live. It
+is **read-only** (it never resizes or sends keystrokes to the workers) and
+**dynamic** (new workers are tiled in as the team grows; finished ones are marked
+`(ended)`). Detach with `Ctrl-b d`; the team keeps running.
+
+```
+bash scripts/watch-workers.sh --once   # one-shot text snapshot, no tmux session
+bash scripts/watch-workers.sh --help   # all options
+```
+
+See [**Watching the team**](docs/watch-workers.md) for details.
 
 ## Learn more
 
 - 📖 [**Roles in depth**](docs/roles.md) — how dispatch, brainstorming, workers, and review actually work
+- 📺 [**Watching the team**](docs/watch-workers.md) — the live tmux dashboard for all workers
 - ⚙️ [**Configuration reference**](docs/configuration.md) — every field in `.agent-team/config.json`
 - 🔒 [**Security model**](docs/security.md) — **read before running on repos with secrets or untrusted tasks**
 - 🩺 [**Troubleshooting**](docs/troubleshooting.md) — start with `/agent-team:doctor`
