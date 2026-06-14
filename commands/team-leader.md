@@ -83,7 +83,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch-workers.sh"
 
 Slot N → task X mapping is not stable — workers race for any todo via atomic `mv`. The number in the session name is just the slot, not the task.
 
-Attach to watch: `tmux attach -t ${AGENT_TEAM_WORKER_PREFIX}<N>`. Abort: `tmux kill-session -t ${AGENT_TEAM_WORKER_PREFIX}<N>`.
+Attach to watch one worker: `tmux attach -t ${AGENT_TEAM_WORKER_PREFIX}<N>`. Abort: `tmux kill-session -t ${AGENT_TEAM_WORKER_PREFIX}<N>`.
+
+To watch the whole team live in one tiled, read-only tmux dashboard, point the developer at `bash scripts/watch-workers.sh` (`--once` for a one-shot text snapshot). See `docs/watch-workers.md`.
 
 ### Event-driven dispatch (replaces the old 1-minute loop)
 
