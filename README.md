@@ -82,6 +82,9 @@ the live dashboard:
 bash scripts/watch-workers.sh
 ```
 
+If you let `/agent-team:setup` install the optional shell shortcut, run
+`agent-watch` (with the same flags) from any configured repo instead.
+
 <p align="center">
   <img src="docs/images/watch-workers.png" alt="watch-workers.sh dashboard: four agent-worker panes tiled in a single tmux window, each mirroring a worker's live Claude Code output as it researches, creates worktrees, and runs sub-agents." width="800">
 </p>
@@ -96,6 +99,10 @@ is **read-only** (it never resizes or sends keystrokes to the workers) and
 bash scripts/watch-workers.sh --once   # one-shot text snapshot, no tmux session
 bash scripts/watch-workers.sh --help   # all options
 ```
+
+Running several projects at once? Give each a distinct `workerSessionPrefix` in
+its `.agent-team/config.json` — the dashboard then watches only that project's
+workers and lands on its own monitor session automatically.
 
 See [**Watching the team**](docs/watch-workers.md) for details.
 
