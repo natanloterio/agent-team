@@ -82,6 +82,10 @@ the live dashboard:
 bash scripts/watch-workers.sh
 ```
 
+<p align="center">
+  <img src="docs/images/watch-workers.png" alt="watch-workers.sh dashboard: four agent-worker panes tiled in a single tmux window, each mirroring a worker's live Claude Code output as it researches, creates worktrees, and runs sub-agents." width="800">
+</p>
+
 It opens a tmux session that tiles every running `agent-worker-*` session into a
 single window — one pane per worker, each mirroring that worker's output live. It
 is **read-only** (it never resizes or sends keystrokes to the workers) and
