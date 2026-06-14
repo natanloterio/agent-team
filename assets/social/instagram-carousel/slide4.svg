@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" font-family="DejaVu Sans, Helvetica, Arial, sans-serif">
+  <rect width="1080" height="1350" fill="#0f172a"/>
+  <rect x="0" y="0" width="1080" height="8" fill="#34d399"/>
+  <text x="90" y="160" font-size="30" font-weight="700" letter-spacing="6" fill="#34d399">O QUE REALMENTE IMPORTA</text>
+
+  <text x="90" y="440" font-size="80" font-weight="800" fill="#f8fafc">Faltou algo?</text>
+  <text x="90" y="540" font-size="80" font-weight="800" fill="#34d399">A gente mudou.</text>
+  <text x="90" y="640" font-size="80" font-weight="800" fill="#34d399">Numa tarde.</text>
+
+  <text x="90" y="800" font-size="40" font-weight="400" fill="#cbd5e1">O plugin é simples de ler e de estender.</text>
+
+  <text x="90" y="900" font-size="40" font-weight="400" fill="#cbd5e1">Quando o nosso jeito de trabalhar e a</text>
+  <text x="90" y="958" font-size="40" font-weight="400" fill="#cbd5e1">ferramenta discordaram, quem mudou foi</text>
+  <text x="90" y="1016" font-size="40" font-weight="400" fill="#cbd5e1">a ferramenta. No mesmo dia, sem pedir</text>
+  <text x="90" y="1074" font-size="40" font-weight="400" fill="#cbd5e1">permissão a ninguém.</text>
+
+  <text x="90" y="1255" font-size="32" font-weight="600" fill="#94a3b8">arraste  →</text>
+  <text x="990" y="1255" font-size="32" font-weight="700" fill="#475569" text-anchor="end">04 / 05</text>
+</svg>

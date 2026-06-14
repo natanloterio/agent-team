@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" font-family="DejaVu Sans, Helvetica, Arial, sans-serif">
+  <rect width="1080" height="1350" fill="#0f172a"/>
+  <rect x="0" y="0" width="1080" height="8" fill="#818cf8"/>
+  <text x="90" y="160" font-size="30" font-weight="700" letter-spacing="6" fill="#818cf8">DESTOKENIZANDO</text>
+
+  <text x="90" y="540" font-size="92" font-weight="800" fill="#f8fafc">A ferramenta</text>
+  <text x="90" y="640" font-size="92" font-weight="800" fill="#f8fafc">tem que se</text>
+  <text x="90" y="740" font-size="92" font-weight="800" fill="#f8fafc">adaptar a</text>
+  <text x="90" y="840" font-size="92" font-weight="800" fill="#818cf8">você.</text>
+
+  <text x="90" y="960" font-size="46" font-weight="500" fill="#cbd5e1">Não o contrário.</text>
+
+  <text x="90" y="1255" font-size="32" font-weight="600" fill="#94a3b8">arraste para ver como  →</text>
+  <text x="990" y="1255" font-size="32" font-weight="700" fill="#475569" text-anchor="end">01 / 05</text>
+</svg>
