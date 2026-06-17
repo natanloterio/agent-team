@@ -102,3 +102,17 @@ test("escalateBlock writes a backlog summary only when escalated", () => {
   assert.match(readFileSync(file, "utf8"), /leak/);
   assert.match(file, /backlog/);
 });
+
+import { execFileSync } from "node:child_process";
+
+test("CLI init + add-block via AGENT_TEAM_ROOT", () => {
+  const root = makeRoot();
+  md(join(root, ".agent-team"), { recursive: true });
+  wf(join(root, ".agent-team", "config.json"), JSON.stringify({ governance: { enabled: true } }));
+  const env = { ...process.env, AGENT_TEAM_ROOT: root };
+  execFileSync("node", ["scripts/planning.mjs", "init", "demo"], { env });
+  execFileSync("node", ["scripts/planning.mjs", "add-block", "demo", "blk", "an objective"], { env });
+  const status = readStatus(root, TASKS, "demo", "blk");
+  assert.equal(status.objective, "an objective");
+  assert.equal(status.state, "in-review");
+});

@@ -132,3 +132,45 @@ export function escalateBlock(root, tasksDir, demand, block) {
   writeFileSync(file, lines.join("\n") + "\n");
   return file;
 }
+
+// --- CLI ---------------------------------------------------------------
+function isMain() {
+  return process.argv[1] && process.argv[1].endsWith("planning.mjs");
+}
+
+if (isMain()) {
+  const { loadConfig, mainWorktreeRoot } = await import("./lib/config.mjs");
+  const root = mainWorktreeRoot();
+  const cfg = loadConfig(root);
+  const td = cfg.tasksDir;
+  const mc = cfg.governance.maxCycles;
+  const [cmd, ...rest] = process.argv.slice(2);
+  try {
+    switch (cmd) {
+      case "init":
+        process.stdout.write(initDemand(root, td, rest[0]) + "\n");
+        break;
+      case "add-block":
+        process.stdout.write(addBlock(root, td, rest[0], rest[1], rest.slice(2).join(" ")) + "\n");
+        break;
+      case "verdict": {
+        const votes = JSON.parse(readFileSync(rest[2], "utf8"));
+        const v = recordVerdict(root, td, rest[0], rest[1], votes, { maxCycles: mc });
+        process.stdout.write(`${v.decision} (approve ${v.approveCount}/${v.approveCount + v.rejectCount})\n`);
+        break;
+      }
+      case "promote":
+        process.stdout.write(promoteBlock(root, td, rest[0], rest[1]).join("\n") + "\n");
+        break;
+      case "escalate":
+        process.stdout.write(escalateBlock(root, td, rest[0], rest[1]) + "\n");
+        break;
+      default:
+        process.stderr.write(`unknown command: ${cmd}\n`);
+        process.exit(2);
+    }
+  } catch (err) {
+    process.stderr.write(`${err.message}\n`);
+    process.exit(1);
+  }
+}
