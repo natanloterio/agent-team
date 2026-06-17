@@ -71,6 +71,12 @@ Each role is a Claude Code session you start with a slash command. See
 | **Worker** | `/agent-team:worker` | Claims one task, builds it in an isolated worktree following TDD, opens a PR. |
 | **Reviewer** | `/agent-team:reviewer` | Verifies acceptance criteria, runs UI checks, auto-merges passing PRs or rejects with a reason. |
 
+For large goals, the team-leader can run an optional **Governance Mode** — a
+planning pipeline (Administrador → Arquiteto → Conselho peer review) that
+produces a reviewed, approved backlog before any worker starts. Enable it with
+`governance.enabled` in `.agent-team/config.json`. See
+[**Roles in depth**](docs/roles.md#governance-mode).
+
 > Watch a single worker live with `tmux attach -t <session-name>`.
 
 ## Watch the whole team in one view

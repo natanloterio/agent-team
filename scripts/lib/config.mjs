@@ -14,6 +14,13 @@ export const DEFAULTS = Object.freeze({
   devServer: null,
   worktree: Object.freeze({ linkEnvFiles: true }),
   board: Object.freeze({ provider: "none" }),
+  governance: Object.freeze({
+    enabled: false,
+    councilLenses: Object.freeze([
+      "requirements", "architecture", "security", "consistency", "redundancy",
+    ]),
+    maxCycles: 2,
+  }),
 });
 
 export class ConfigError extends Error {}
@@ -52,6 +59,13 @@ export function loadConfig(root = mainWorktreeRoot()) {
     ...raw,
     worktree: { ...DEFAULTS.worktree, ...(raw.worktree ?? {}) },
     board: { ...DEFAULTS.board, ...(raw.board ?? {}) },
+    governance: {
+      ...DEFAULTS.governance,
+      ...(raw.governance ?? {}),
+      councilLenses: [
+        ...((raw.governance?.councilLenses) ?? DEFAULTS.governance.councilLenses),
+      ],
+    },
   };
   validate(cfg, path);
   return cfg;
@@ -90,6 +104,14 @@ function validate(cfg, path) {
     }
     if (!cfg.board.envFile) fail("board.envFile is required when provider is trello");
   }
+  const g = cfg.governance;
+  if (typeof g.enabled !== "boolean")
+    fail("governance.enabled must be a boolean");
+  if (!Number.isInteger(g.maxCycles) || g.maxCycles < 1)
+    fail(`governance.maxCycles must be an integer >= 1, got ${JSON.stringify(g.maxCycles)}`);
+  if (!Array.isArray(g.councilLenses) || g.councilLenses.length < 1
+      || !g.councilLenses.every((l) => typeof l === "string" && l))
+    fail("governance.councilLenses must be a non-empty array of non-empty strings");
 }
 
 function shellQuote(v) {
@@ -109,6 +131,9 @@ if (process.argv[2] === "--print-env") {
       AGENT_TEAM_STALE_SECONDS: cfg.staleWorkerSeconds,
       AGENT_TEAM_LINK_ENV_FILES: cfg.worktree.linkEnvFiles,
       AGENT_TEAM_BOARD_PROVIDER: cfg.board.provider,
+      AGENT_TEAM_GOV_ENABLED: cfg.governance.enabled,
+      AGENT_TEAM_GOV_MAX_CYCLES: cfg.governance.maxCycles,
+      AGENT_TEAM_GOV_LENSES: cfg.governance.councilLenses.join(","),
     };
     process.stdout.write(
       Object.entries(vars).map(([k, v]) => `${k}=${shellQuote(v)}`).join("\n") + "\n");
