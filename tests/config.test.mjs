@@ -75,3 +75,40 @@ test("--print-env emits shell-safe lines; exit 3 when unconfigured", () => {
     { env: { ...process.env, AGENT_TEAM_ROOT: bare }, encoding: "utf8" }),
     (e) => e.status === 3);
 });
+
+test("governance defaults applied when absent", () => {
+  const root = makeRepo(JSON.stringify({}));
+  const cfg = loadConfig(root);
+  assert.equal(cfg.governance.enabled, false);
+  assert.equal(cfg.governance.maxCycles, 2);
+  assert.deepEqual(cfg.governance.councilLenses,
+    ["requirements", "architecture", "security", "consistency", "redundancy"]);
+});
+
+test("governance overrides merge", () => {
+  const root = makeRepo(JSON.stringify({
+    governance: { enabled: true, maxCycles: 3, councilLenses: ["security"] },
+  }));
+  const cfg = loadConfig(root);
+  assert.equal(cfg.governance.enabled, true);
+  assert.equal(cfg.governance.maxCycles, 3);
+  assert.deepEqual(cfg.governance.councilLenses, ["security"]);
+});
+
+test("governance.maxCycles < 1 throws", () => {
+  const root = makeRepo(JSON.stringify({ governance: { maxCycles: 0 } }));
+  assert.throws(() => loadConfig(root), (e) =>
+    e instanceof ConfigError && /maxCycles/.test(e.message));
+});
+
+test("governance.councilLenses must be non-empty array of strings", () => {
+  const root = makeRepo(JSON.stringify({ governance: { councilLenses: [] } }));
+  assert.throws(() => loadConfig(root), (e) =>
+    e instanceof ConfigError && /councilLenses/.test(e.message));
+});
+
+test("governance.enabled must be boolean", () => {
+  const root = makeRepo(JSON.stringify({ governance: { enabled: "yes" } }));
+  assert.throws(() => loadConfig(root), (e) =>
+    e instanceof ConfigError && /enabled/.test(e.message));
+});
