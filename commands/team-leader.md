@@ -182,7 +182,10 @@ constraints, success criteria) and a numbered list of **macro-tasks** in
 ### Step 2 — Arquiteto/Engenheiro (1 sub-agent per macro-task, in parallel)
 
 For each macro-task, register a block and dispatch ONE Solution Designer
-sub-agent **in parallel** (send all Task calls in a single message):
+sub-agent **in parallel** (send all Task calls in a single message). Use the
+**`architect`** agent (Task tool `subagent_type: architect`) — it carries the
+Clean Architecture system prompt and the Decomposition Process / Task Template
+the Arquiteto must follow:
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/planning.mjs" add-block <demand-slug> <block-slug> "<objective>"

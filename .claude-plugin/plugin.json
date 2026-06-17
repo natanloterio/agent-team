@@ -1,6 +1,6 @@
 {
   "name": "agent-team",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Multi-session agent team for Claude Code: filesystem task queue, tmux worker dispatch, automated review cycle, optional Trello board sync.",
   "author": {
     "name": "Natan Loterio"
