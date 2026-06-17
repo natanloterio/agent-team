@@ -17,6 +17,11 @@ export function computeVerdict(votes, { cycle, maxCycles } = {}) {
   if (!Number.isInteger(maxCycles) || maxCycles < 1)
     throw new Error("maxCycles must be an integer >= 1");
 
+  for (const v of votes) {
+    if (v.vote !== "approve" && v.vote !== "reject")
+      throw new Error(`invalid vote "${v.vote}" for lens "${v.lens}"`);
+  }
+
   const approveCount = votes.filter((v) => v.vote === "approve").length;
   const rejectCount = votes.length - approveCount;
 
@@ -24,6 +29,14 @@ export function computeVerdict(votes, { cycle, maxCycles } = {}) {
     (v.findings ?? [])
       .filter((f) => f.severity === "critical")
       .map((f) => ({ lens: v.lens, note: f.note })));
+
+  const known = new Set(SEVERITIES);
+  for (const v of votes) {
+    for (const f of v.findings ?? []) {
+      if (!known.has(f.severity))
+        throw new Error(`invalid severity "${f.severity}" for lens "${v.lens}"`);
+    }
+  }
 
   // Strict majority: strictly more than half approve.
   const hasMajority = approveCount * 2 > votes.length;

@@ -54,3 +54,27 @@ test("empty votes throws", () => {
 test("invalid cycle throws", () => {
   assert.throws(() => computeVerdict([approve("a")], { cycle: 0, maxCycles: 2 }), /cycle/);
 });
+
+test("reject without findings counts against majority but does not veto", () => {
+  const v = computeVerdict(
+    [approve("a"), approve("b"), { lens: "c", vote: "reject", findings: [] }],
+    { cycle: 1, maxCycles: 2 });
+  assert.equal(v.decision, "approved");
+  assert.deepEqual(v.vetoes, []);
+});
+
+test("invalid maxCycles throws", () => {
+  assert.throws(() => computeVerdict([approve("a")], { cycle: 1, maxCycles: 0 }), /maxCycles/);
+});
+
+test("unknown severity throws", () => {
+  assert.throws(() => computeVerdict(
+    [{ lens: "sec", vote: "reject", findings: [{ severity: "Critical", note: "typo" }] }],
+    { cycle: 1, maxCycles: 2 }), /severity/);
+});
+
+test("invalid vote value throws", () => {
+  assert.throws(() => computeVerdict(
+    [{ lens: "x", vote: "abstain", findings: [] }],
+    { cycle: 1, maxCycles: 2 }), /vote/);
+});
