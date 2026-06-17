@@ -62,3 +62,38 @@ export function addBlock(root, tasksDir, demand, block, objective) {
     { objective: String(objective ?? ""), state: "in-review", cycle: 0, history: [] });
   return dir;
 }
+
+function renderCycle(cycle, votes, verdict) {
+  const lines = [`# Council cycle ${cycle} — ${verdict.decision}`, ""];
+  lines.push(`Approve: ${verdict.approveCount} · Reject: ${verdict.rejectCount}`, "");
+  for (const v of votes) {
+    lines.push(`## ${v.lens} — ${v.vote}`);
+    for (const f of v.findings ?? []) lines.push(`- [${f.severity}] ${f.note}`);
+    lines.push("");
+  }
+  if (verdict.reasons.length) {
+    lines.push("## Blocking reasons", ...verdict.reasons.map((r) => `- ${r}`), "");
+  }
+  return lines.join("\n");
+}
+
+export function recordVerdict(root, tasksDir, demand, block, votes, { maxCycles }) {
+  const status = readStatus(root, tasksDir, demand, block);
+  const cycle = status.cycle + 1;
+  const verdict = computeVerdict(votes, { cycle, maxCycles });
+  writeFileSync(
+    join(blockDir(root, tasksDir, demand, block), "council", `cycle-${cycle}.md`),
+    renderCycle(cycle, votes, verdict));
+  const state = verdict.decision === "approved" ? "approved"
+    : verdict.decision === "escalated" ? "escalated" : "in-review";
+  writeStatus(root, tasksDir, demand, block, {
+    ...status,
+    cycle,
+    state,
+    history: [...status.history, {
+      cycle, decision: verdict.decision, reasons: verdict.reasons,
+      approveCount: verdict.approveCount, rejectCount: verdict.rejectCount,
+    }],
+  });
+  return verdict;
+}

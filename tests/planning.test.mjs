@@ -44,3 +44,34 @@ test("addBlock rejects slugs with path traversal", () => {
   initDemand(root, TASKS, "build-hotel");
   assert.throws(() => addBlock(root, TASKS, "build-hotel", "../evil", "x"), /slug/);
 });
+
+import { recordVerdict } from "../scripts/planning.mjs";
+
+const approve = (lens) => ({ lens, vote: "approve", findings: [] });
+const rejectCrit = (lens, note) => ({ lens, vote: "reject", findings: [{ severity: "critical", note }] });
+
+test("recordVerdict approves, bumps cycle, writes cycle file", () => {
+  const root = makeRoot();
+  initDemand(root, TASKS, "d");
+  addBlock(root, TASKS, "d", "b", "obj");
+  const v = recordVerdict(root, TASKS, "d", "b", [approve("a"), approve("b")], { maxCycles: 2 });
+  assert.equal(v.decision, "approved");
+  const status = readStatus(root, TASKS, "d", "b");
+  assert.equal(status.state, "approved");
+  assert.equal(status.cycle, 1);
+  assert.equal(status.history.length, 1);
+  assert.ok(existsSync(join(blockDir(root, TASKS, "d", "b"), "council", "cycle-1.md")));
+});
+
+test("recordVerdict revises on cycle 1, escalates on cycle 2", () => {
+  const root = makeRoot();
+  initDemand(root, TASKS, "d");
+  addBlock(root, TASKS, "d", "b", "obj");
+  const v1 = recordVerdict(root, TASKS, "d", "b", [rejectCrit("sec", "leak")], { maxCycles: 2 });
+  assert.equal(v1.decision, "revise");
+  assert.equal(readStatus(root, TASKS, "d", "b").state, "in-review");
+  const v2 = recordVerdict(root, TASKS, "d", "b", [rejectCrit("sec", "still leaking")], { maxCycles: 2 });
+  assert.equal(v2.decision, "escalated");
+  assert.equal(readStatus(root, TASKS, "d", "b").cycle, 2);
+  assert.equal(readStatus(root, TASKS, "d", "b").state, "escalated");
+});
