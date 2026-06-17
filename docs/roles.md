@@ -55,6 +55,38 @@ workers read it before implementing.
 > **Tip:** attach to a running worker to watch it work:
 > `tmux attach -t <session-name>`
 
+### Governance Mode
+
+When `governance.enabled` is `true` in `.agent-team/config.json`, the
+team-leader runs a planning pipeline of sub-agents **before** dispatching any
+workers. In Dispatch Mode (the default) tasks go straight to `todo/`; in
+Governance Mode they go through a three-phase review first.
+
+**Pipeline phases:**
+
+1. **Administrador** (1 sub-agent) — turns the raw demand into `requirements.md`
+   and a macro-task list.
+2. **Arquiteto/Engenheiro** (1 sub-agent per macro-task, run in parallel) —
+   breaks each macro-task into blocks of subtasks, carrying strategic context
+   (project vision, block objective) down to every task file.
+3. **Conselho** (N sub-agents per block, one per configured lens, run in
+   parallel) — peer-reviews the proposed subtasks. A block is approved on a
+   **strict majority** of `approve` votes with **no `critical` finding**; any
+   `critical` is a veto that forces a correction cycle. Up to `governance.maxCycles`
+   cycles are attempted; if exhausted, the block moves to `backlog/` and the
+   team-leader notifies you to decide.
+
+Approved subtasks land in `todo/` and are picked up by workers exactly as in
+Dispatch Mode. Planning artifacts (requirements, macro-tasks, per-block subtask
+proposals, and per-cycle Council findings) are persisted under
+`<tasksDir>/planning/<demand-slug>/` so the process is auditable and survives a
+session crash.
+
+See the [Governance Layer design](specs/2026-06-17-governance-layer-design.md)
+for the full spec and the [configuration reference](configuration.md#fields)
+for available knobs (`governance.enabled`, `governance.councilLenses`,
+`governance.maxCycles`).
+
 ---
 
 ## worker

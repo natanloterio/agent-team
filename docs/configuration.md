@@ -25,6 +25,13 @@ you. Use this page when you want to understand or tweak a specific setting.
 | `board.listIds.done` | string | — | Resolved list ID for `done/` (may share an ID with another key) |
 | `board.listIds.approved` | string | — | Resolved list ID for `approved/` |
 | `board.envFile` | string | — | Gitignored file holding `TRELLO_API_KEY` / `TRELLO_SECRET` |
+| `governance.enabled` | boolean | `false` | Turn Governance Mode on. When `false` (default) the team-leader uses Dispatch Mode exactly as before. |
+| `governance.councilLenses` | string[] | `["requirements","architecture","security","consistency","redundancy"]` | One Conselho reviewer sub-agent is spawned per lens during peer review. |
+| `governance.maxCycles` | integer ≥ 1 | `2` | Maximum Conselho correction cycles before a block escalates to `backlog/` for a human decision. |
+
+Planning artifacts produced by Governance Mode are written under
+`<tasksDir>/planning/<demand-slug>/`. See [Governance Mode](roles.md#governance-mode)
+for the full pipeline description.
 
 ## Trello list IDs
 
