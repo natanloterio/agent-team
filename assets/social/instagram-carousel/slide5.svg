@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" font-family="DejaVu Sans, Helvetica, Arial, sans-serif">
+  <rect width="1080" height="1350" fill="#0f172a"/>
+  <rect x="0" y="0" width="1080" height="8" fill="#818cf8"/>
+  <text x="90" y="160" font-size="30" font-weight="700" letter-spacing="6" fill="#818cf8">VEM VER NA PRÁTICA</text>
+
+  <text x="90" y="430" font-size="86" font-weight="800" fill="#f8fafc">A ferramenta se</text>
+  <text x="90" y="525" font-size="86" font-weight="800" fill="#f8fafc">molda a você.</text>
+  <text x="90" y="620" font-size="86" font-weight="800" fill="#818cf8">E rápido.</text>
+
+  <g>
+    <rect x="90" y="760" width="900" height="110" rx="16" fill="#1e293b"/>
+    <text x="130" y="828" font-size="40" font-weight="700" fill="#f8fafc">🎥  Walkthrough no YouTube</text>
+
+    <rect x="90" y="900" width="900" height="110" rx="16" fill="#1e293b"/>
+    <text x="130" y="968" font-size="40" font-weight="700" fill="#f8fafc">⭐  Open source no GitHub</text>
+  </g>
+
+  <text x="90" y="1110" font-size="38" font-weight="600" fill="#94a3b8">links na bio e nos comentários</text>
+
+  <text x="90" y="1255" font-size="36" font-weight="800" fill="#818cf8">@pitaia</text>
+  <text x="990" y="1255" font-size="32" font-weight="700" fill="#475569" text-anchor="end">05 / 05</text>
+</svg>
