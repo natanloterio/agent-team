@@ -1,14 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, existsSync, readFileSync } from "node:fs";
+import {
+  mkdtempSync, existsSync, readFileSync,
+  writeFileSync as wf, mkdirSync as md,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { initDemand, addBlock, readStatus, blockDir } from "../scripts/planning.mjs";
+import { execFileSync } from "node:child_process";
+import {
+  initDemand, addBlock, readStatus, blockDir,
+  recordVerdict, promoteBlock, escalateBlock,
+} from "../scripts/planning.mjs";
 
 const TASKS = ".tasks";
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "agent-team-planning-"));
 }
+
+const approve = (lens) => ({ lens, vote: "approve", findings: [] });
+const rejectCrit = (lens, note) => ({ lens, vote: "reject", findings: [{ severity: "critical", note }] });
 
 test("initDemand creates planning dir with requirements + macro-tasks stubs", () => {
   const root = makeRoot();
@@ -45,10 +55,12 @@ test("addBlock rejects slugs with path traversal", () => {
   assert.throws(() => addBlock(root, TASKS, "build-hotel", "../evil", "x"), /slug/);
 });
 
-import { recordVerdict } from "../scripts/planning.mjs";
-
-const approve = (lens) => ({ lens, vote: "approve", findings: [] });
-const rejectCrit = (lens, note) => ({ lens, vote: "reject", findings: [{ severity: "critical", note }] });
+test("addBlock refuses to overwrite an existing block", () => {
+  const root = makeRoot();
+  initDemand(root, TASKS, "d");
+  addBlock(root, TASKS, "d", "b", "obj");
+  assert.throws(() => addBlock(root, TASKS, "d", "b", "obj2"), /already exists/);
+});
 
 test("recordVerdict approves, bumps cycle, writes cycle file", () => {
   const root = makeRoot();
@@ -76,8 +88,15 @@ test("recordVerdict revises on cycle 1, escalates on cycle 2", () => {
   assert.equal(readStatus(root, TASKS, "d", "b").state, "escalated");
 });
 
-import { promoteBlock, escalateBlock } from "../scripts/planning.mjs";
-import { writeFileSync as wf, mkdirSync as md } from "node:fs";
+test("recordVerdict refuses a second verdict on a terminal block", () => {
+  const root = makeRoot();
+  initDemand(root, TASKS, "d");
+  addBlock(root, TASKS, "d", "b", "obj");
+  recordVerdict(root, TASKS, "d", "b", [approve("a"), approve("b")], { maxCycles: 2 });
+  assert.throws(
+    () => recordVerdict(root, TASKS, "d", "b", [approve("a"), approve("b")], { maxCycles: 2 }),
+    /terminal/);
+});
 
 test("promoteBlock moves subtask files into todo/ only when approved", () => {
   const root = makeRoot();
@@ -103,8 +122,6 @@ test("escalateBlock writes a backlog summary only when escalated", () => {
   assert.match(file, /backlog/);
 });
 
-import { execFileSync } from "node:child_process";
-
 test("CLI init + add-block via AGENT_TEAM_ROOT", () => {
   const root = makeRoot();
   md(join(root, ".agent-team"), { recursive: true });
@@ -115,4 +132,20 @@ test("CLI init + add-block via AGENT_TEAM_ROOT", () => {
   const status = readStatus(root, TASKS, "demo", "blk");
   assert.equal(status.objective, "an objective");
   assert.equal(status.state, "in-review");
+});
+
+test("CLI verdict + promote moves an approved subtask to todo", () => {
+  const root = makeRoot();
+  md(join(root, ".agent-team"), { recursive: true });
+  wf(join(root, ".agent-team", "config.json"), JSON.stringify({ governance: { enabled: true, maxCycles: 2 } }));
+  const env = { ...process.env, AGENT_TEAM_ROOT: root };
+  execFileSync("node", ["scripts/planning.mjs", "init", "demo"], { env });
+  execFileSync("node", ["scripts/planning.mjs", "add-block", "demo", "blk", "obj"], { env });
+  const sub = join(root, TASKS, "planning", "demo", "blocks", "blk", "subtasks");
+  wf(join(sub, "2026-06-17-x.md"), "---\ntitle: x\n---\nbody\n");
+  const votes = join(root, "votes.json");
+  wf(votes, JSON.stringify([{ lens: "a", vote: "approve", findings: [] }, { lens: "b", vote: "approve", findings: [] }]));
+  execFileSync("node", ["scripts/planning.mjs", "verdict", "demo", "blk", votes], { env });
+  execFileSync("node", ["scripts/planning.mjs", "promote", "demo", "blk"], { env });
+  assert.ok(existsSync(join(root, TASKS, "todo", "2026-06-17-x.md")));
 });

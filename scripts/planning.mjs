@@ -4,6 +4,7 @@
 // be unit-tested; the CLI at the bottom wires them to the loaded config.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { computeVerdict } from "./lib/council.mjs";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -28,7 +29,8 @@ export function blockDir(root, tasksDir, demand, block) {
 }
 
 function writeIfAbsent(path, body) {
-  if (!existsSync(path)) writeFileSync(path, body);
+  try { writeFileSync(path, body, { flag: "wx" }); }
+  catch (err) { if (err.code !== "EEXIST") throw err; }
 }
 
 export function initDemand(root, tasksDir, demand) {
@@ -50,12 +52,16 @@ export function readStatus(root, tasksDir, demand, block) {
 }
 
 function writeStatus(root, tasksDir, demand, block, status) {
-  writeFileSync(statusPath(root, tasksDir, demand, block),
-    JSON.stringify(status, null, 2) + "\n");
+  const dest = statusPath(root, tasksDir, demand, block);
+  const tmp = dest + ".tmp";
+  writeFileSync(tmp, JSON.stringify(status, null, 2) + "\n");
+  renameSync(tmp, dest);
 }
 
 export function addBlock(root, tasksDir, demand, block, objective) {
   const dir = blockDir(root, tasksDir, demand, block);
+  if (existsSync(statusPath(root, tasksDir, demand, block)))
+    throw new Error(`block ${demand}/${block} already exists`);
   mkdirSync(join(dir, "council"), { recursive: true });
   mkdirSync(join(dir, "subtasks"), { recursive: true });
   writeStatus(root, tasksDir, demand, block,
@@ -79,6 +85,8 @@ function renderCycle(cycle, votes, verdict) {
 
 export function recordVerdict(root, tasksDir, demand, block, votes, { maxCycles }) {
   const status = readStatus(root, tasksDir, demand, block);
+  if (status.state === "approved" || status.state === "escalated")
+    throw new Error(`block ${demand}/${block} is already terminal (state=${status.state})`);
   const cycle = status.cycle + 1;
   const verdict = computeVerdict(votes, { cycle, maxCycles });
   writeFileSync(
@@ -135,7 +143,7 @@ export function escalateBlock(root, tasksDir, demand, block) {
 
 // --- CLI ---------------------------------------------------------------
 function isMain() {
-  return process.argv[1] && process.argv[1].endsWith("planning.mjs");
+  return process.argv[1] === fileURLToPath(import.meta.url);
 }
 
 if (isMain()) {
@@ -154,6 +162,10 @@ if (isMain()) {
         process.stdout.write(addBlock(root, td, rest[0], rest[1], rest.slice(2).join(" ")) + "\n");
         break;
       case "verdict": {
+        if (!rest[0] || !rest[1] || !rest[2]) {
+          process.stderr.write("usage: planning.mjs verdict <demand> <block> <votes.json>\n");
+          process.exit(2);
+        }
         const votes = JSON.parse(readFileSync(rest[2], "utf8"));
         const v = recordVerdict(root, td, rest[0], rest[1], votes, { maxCycles: mc });
         process.stdout.write(`${v.decision} (approve ${v.approveCount}/${v.approveCount + v.rejectCount})\n`);
