@@ -156,6 +156,104 @@ rejection_reason:
 - `bug` — fixing a broken behavior (describe expected vs actual in the description)
 - `business` — strategy, copy, pricing, GTM — no code required
 
+## Governance Mode — Hierarchical planning before dispatch
+
+Use this mode when `governance.enabled` is `true` in config (check the
+`AGENT_TEAM_GOV_ENABLED` env from `dispatch-workers.sh`/`config.mjs --print-env`)
+**and** the goal is large enough to warrant requirements + peer review. For
+small, clear goals, Dispatch Mode is still fine. The whole pipeline runs as
+**sub-agents via the Task tool inside this session** — no new tmux sessions.
+
+All planning artifacts live under `<tasksDir>/planning/<demand-slug>/`, managed
+by `scripts/planning.mjs`. Nothing reaches `todo/` without Council approval or
+your explicit decision.
+
+### Step 1 — Administrador (1 sub-agent)
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/planning.mjs" init <demand-slug>
+```
+
+Dispatch ONE sub-agent (general-purpose) acting as a Product Manager. Its job:
+turn the demand into `planning/<demand-slug>/requirements.md` (problem, scope,
+constraints, success criteria) and a numbered list of **macro-tasks** in
+`planning/<demand-slug>/macro-tasks.md`. It returns the macro-task slugs.
+
+### Step 2 — Arquiteto/Engenheiro (1 sub-agent per macro-task, in parallel)
+
+For each macro-task, register a block and dispatch ONE Solution Designer
+sub-agent **in parallel** (send all Task calls in a single message):
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/planning.mjs" add-block <demand-slug> <block-slug> "<objective>"
+```
+
+Each Arquiteto sub-agent breaks its block into independently-implementable
+subtasks and writes ONE file per subtask into
+`planning/<demand-slug>/blocks/<block-slug>/subtasks/YYYY-MM-DD-<slug>.md`,
+using the **extended task template** below (note the mandatory
+`## CONTEXTO ESTRATÉGICO` block — every subtask must carry the product vision).
+
+### Step 3 — Conselho (N sub-agents per block, in parallel)
+
+For each block, dispatch one reviewer sub-agent **per lens** in
+`AGENT_TEAM_GOV_LENSES` (default: requirements, architecture, security,
+consistency, redundancy), all in parallel. Each reviewer reads the block's
+`subtasks/` and returns a JSON object:
+
+```json
+{ "lens": "security", "vote": "approve|reject",
+  "findings": [{ "severity": "info|minor|major|critical", "note": "..." }] }
+```
+
+Collect the votes into a JSON array file and record the verdict:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/planning.mjs" verdict <demand-slug> <block-slug> <votes.json>
+```
+
+The command prints the decision:
+- **approved** → `node .../planning.mjs promote <demand-slug> <block-slug>` (moves subtasks into `todo/`).
+- **revise** → re-dispatch that block's Arquiteto sub-agent with the cycle's
+  blocking reasons (from `council/cycle-N.md`) to rewrite the subtasks, then
+  re-run the Conselho. The verdict command enforces the **2-cycle limit**.
+- **escalated** (2 cycles exhausted) → `node .../planning.mjs escalate <demand-slug> <block-slug>`
+  (writes a summary into `backlog/`) and **report it to the developer**. Do NOT
+  promote an escalated block.
+
+### Step 4 — Handoff
+
+Promoted subtasks are now in `todo/`. Run Worker Dispatch Mode exactly as today;
+workers and the reviewer are unchanged.
+
+### Extended task template (Governance Mode subtasks)
+
+````markdown
+---
+title: <imperative title>
+type: ui | backend | refactor | docs | bug | business
+role: <worker persona>
+project: <demand-slug>
+block: <block objective>
+acceptance_criteria:
+  - <criterion 1>
+preview_path:        # UI tasks only
+spec:
+worktree_branch:
+claimed_at:
+pr_url:
+rejection_reason:
+---
+
+## CONTEXTO ESTRATÉGICO
+PROJETO: <product vision>
+OBJETIVO DO BLOCO: <what this block delivers>
+Why this task matters to the larger objective.
+
+## TAREFA
+<full description, constraints, links to relevant files>
+````
+
 ## Brainstorm Mode — Refining a vague goal before dispatch
 
 Enter this mode when:
