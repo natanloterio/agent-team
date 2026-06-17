@@ -75,3 +75,30 @@ test("recordVerdict revises on cycle 1, escalates on cycle 2", () => {
   assert.equal(readStatus(root, TASKS, "d", "b").cycle, 2);
   assert.equal(readStatus(root, TASKS, "d", "b").state, "escalated");
 });
+
+import { promoteBlock, escalateBlock } from "../scripts/planning.mjs";
+import { writeFileSync as wf, mkdirSync as md } from "node:fs";
+
+test("promoteBlock moves subtask files into todo/ only when approved", () => {
+  const root = makeRoot();
+  initDemand(root, TASKS, "d");
+  const bdir = addBlock(root, TASKS, "d", "b", "obj");
+  wf(join(bdir, "subtasks", "2026-06-17-door-302.md"), "---\ntitle: x\n---\nbody\n");
+  assert.throws(() => promoteBlock(root, TASKS, "d", "b"), /not approved/);
+  recordVerdict(root, TASKS, "d", "b", [approve("a"), approve("b")], { maxCycles: 2 });
+  const moved = promoteBlock(root, TASKS, "d", "b");
+  assert.deepEqual(moved, ["2026-06-17-door-302.md"]);
+  assert.ok(existsSync(join(root, TASKS, "todo", "2026-06-17-door-302.md")));
+});
+
+test("escalateBlock writes a backlog summary only when escalated", () => {
+  const root = makeRoot();
+  initDemand(root, TASKS, "d");
+  addBlock(root, TASKS, "d", "b", "obj");
+  assert.throws(() => escalateBlock(root, TASKS, "d", "b"), /not escalated/);
+  recordVerdict(root, TASKS, "d", "b", [rejectCrit("sec", "leak")], { maxCycles: 1 });
+  const file = escalateBlock(root, TASKS, "d", "b");
+  assert.ok(existsSync(file));
+  assert.match(readFileSync(file, "utf8"), /leak/);
+  assert.match(file, /backlog/);
+});

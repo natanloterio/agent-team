@@ -97,3 +97,38 @@ export function recordVerdict(root, tasksDir, demand, block, votes, { maxCycles 
   });
   return verdict;
 }
+
+export function promoteBlock(root, tasksDir, demand, block) {
+  const status = readStatus(root, tasksDir, demand, block);
+  if (status.state !== "approved")
+    throw new Error(`block ${demand}/${block} is not approved (state=${status.state})`);
+  const todo = join(root, tasksDir, "todo");
+  mkdirSync(todo, { recursive: true });
+  const src = join(blockDir(root, tasksDir, demand, block), "subtasks");
+  const moved = [];
+  for (const name of readdirSync(src).filter((n) => n.endsWith(".md"))) {
+    renameSync(join(src, name), join(todo, name));
+    moved.push(name);
+  }
+  return moved;
+}
+
+export function escalateBlock(root, tasksDir, demand, block) {
+  const status = readStatus(root, tasksDir, demand, block);
+  if (status.state !== "escalated")
+    throw new Error(`block ${demand}/${block} is not escalated (state=${status.state})`);
+  const backlog = join(root, tasksDir, "backlog");
+  mkdirSync(backlog, { recursive: true });
+  const file = join(backlog, `escalated-${demand}-${block}.md`);
+  const lines = [
+    `# ESCALATED: ${demand} / ${block}`, "",
+    `**Objective:** ${status.objective}`,
+    `**Cycles run:** ${status.cycle}`, "",
+    "## Unresolved findings (latest cycle)",
+  ];
+  const last = status.history[status.history.length - 1];
+  for (const r of last?.reasons ?? []) lines.push(`- ${r}`);
+  lines.push("", "Human decision required before these subtasks can enter todo/.");
+  writeFileSync(file, lines.join("\n") + "\n");
+  return file;
+}
