@@ -69,6 +69,9 @@ test("--print-env emits shell-safe lines; exit 3 when unconfigured", () => {
   assert.match(out, /^AGENT_TEAM_ROOT='.*'$/m);
   assert.match(out, /^AGENT_TEAM_PR_BASE='dev'$/m);
   assert.match(out, /^AGENT_TEAM_MAX_WORKERS='8'$/m);
+  assert.match(out, /^AGENT_TEAM_GOV_ENABLED='false'$/m);
+  assert.match(out, /^AGENT_TEAM_GOV_MAX_CYCLES='2'$/m);
+  assert.match(out, /^AGENT_TEAM_GOV_LENSES='requirements,architecture,security,consistency,redundancy'$/m);
 
   const bare = makeRepo(undefined);
   assert.throws(() => execFileSync("node", ["scripts/lib/config.mjs", "--print-env"],
@@ -93,6 +96,16 @@ test("governance overrides merge", () => {
   assert.equal(cfg.governance.enabled, true);
   assert.equal(cfg.governance.maxCycles, 3);
   assert.deepEqual(cfg.governance.councilLenses, ["security"]);
+});
+
+test("governance partial override keeps default lenses, mutable", () => {
+  const root = makeRepo(JSON.stringify({ governance: { maxCycles: 5 } }));
+  const cfg = loadConfig(root);
+  assert.equal(cfg.governance.maxCycles, 5);
+  assert.deepEqual(cfg.governance.councilLenses,
+    ["requirements", "architecture", "security", "consistency", "redundancy"]);
+  // must be a fresh, mutable copy — not the frozen DEFAULTS array
+  assert.doesNotThrow(() => cfg.governance.councilLenses.push("extra"));
 });
 
 test("governance.maxCycles < 1 throws", () => {

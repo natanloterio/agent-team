@@ -59,7 +59,13 @@ export function loadConfig(root = mainWorktreeRoot()) {
     ...raw,
     worktree: { ...DEFAULTS.worktree, ...(raw.worktree ?? {}) },
     board: { ...DEFAULTS.board, ...(raw.board ?? {}) },
-    governance: { ...DEFAULTS.governance, ...(raw.governance ?? {}) },
+    governance: {
+      ...DEFAULTS.governance,
+      ...(raw.governance ?? {}),
+      councilLenses: [
+        ...((raw.governance?.councilLenses) ?? DEFAULTS.governance.councilLenses),
+      ],
+    },
   };
   validate(cfg, path);
   return cfg;
