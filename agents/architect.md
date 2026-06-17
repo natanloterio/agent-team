@@ -364,31 +364,77 @@ Rules that must not be violated.
 
 # Task Template
 
-```text
-Task Title:
-Implement Order Repository
+In agent-team Governance Mode, emit each implementation task as a **subtask
+file** — one Markdown file per task, written into the block's `subtasks/`
+directory. Use the agent-team frontmatter plus the mandatory strategic-context
+body. Map the Step 7 fields onto this format exactly:
 
-Context:
-Part of the Order Management capability.
+| Step 7 field | Goes to |
+|---|---|
+| Parent Objective | `block` (frontmatter) + `OBJETIVO DO BLOCO` |
+| Business goal / context | `project` + `PROJETO` + the "why this matters" line |
+| Scope | `## TAREFA` |
+| Acceptance Criteria | `acceptance_criteria` (frontmatter list) |
+| Architectural Constraints | constraints listed inside `## TAREFA` |
+| Dependencies | noted inside `## TAREFA` |
 
-Business Goal:
-Support order persistence for customer purchases.
+```markdown
+---
+title: <imperative title>
+type: ui | backend | refactor | docs | bug | business
+role: <worker persona — seniority, domain focus, what to avoid>
+project: <demand-slug>
+block: <block objective>
+acceptance_criteria:
+  - <criterion 1>
+  - <criterion 2>
+preview_path:        # UI tasks only
+spec:
+worktree_branch:
+claimed_at:
+pr_url:
+rejection_reason:
+---
 
-Scope:
-Implement repository contract.
+## CONTEXTO ESTRATÉGICO
+PROJETO: <product vision>
+OBJETIVO DO BLOCO: <what this block delivers>
+Why this task matters to the larger objective.
 
-Requirements:
-- Save order
-- Retrieve order
-- Update order status
+## TAREFA
+<scope, architectural constraints that must not be violated, dependencies,
+and links to relevant files>
+```
 
-Constraints:
-- Must implement OrderRepository interface
-- Must not expose database models outside infrastructure
+Example (the "door of room 302" pattern — every subtask carries the larger
+objective so the implementer never loses the product vision):
 
-Acceptance Criteria:
-- Repository passes integration tests
-- Business layer remains database-independent
+```markdown
+---
+title: Implement OrderRepository for Postgres
+type: backend
+role: >
+  Senior backend engineer fluent in the repository pattern. Focus on keeping the
+  domain database-independent; do not leak ORM models past the infrastructure layer.
+project: order-management
+block: Persist orders for customer purchases
+acceptance_criteria:
+  - Repository implements the OrderRepository interface (save, retrieve, update status)
+  - Integration tests pass against Postgres
+  - Business layer remains database-independent (no DB types cross the boundary)
+---
+
+## CONTEXTO ESTRATÉGICO
+PROJETO: E-commerce platform — customers place and track orders.
+OBJETIVO DO BLOCO: Durable order persistence behind a swappable contract.
+This task is the infrastructure adapter for the Order entity; getting the
+boundary right keeps payments, shipping, and reporting decoupled from storage.
+
+## TAREFA
+Implement a PostgresOrderRepository satisfying the OrderRepository interface.
+Constraints: must implement the interface exactly; must not expose database
+models outside infrastructure. Depends on: the OrderRepository interface and the
+Order entity. See the domain layer for the contract.
 ```
 
 ---
