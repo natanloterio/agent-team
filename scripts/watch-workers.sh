@@ -6,7 +6,9 @@
 # It is READ-ONLY: each pane mirrors a worker's output via `tmux capture-pane`,
 # so the dashboard never attaches a client to the workers (it can't resize them
 # or send them keystrokes). It is DYNAMIC: a background controller tiles in new
-# workers as they are spawned, so panes appear as the team grows.
+# workers as they are spawned and closes a worker's pane once its session ends,
+# so panes appear as the team grows and disappear as workers finish. Pass
+# --keep-ended to keep finished workers' panes (showing their final output).
 #
 # usage:
 #   watch-workers.sh                 build (or attach to) the live dashboard
@@ -15,6 +17,8 @@
 #   watch-workers.sh --interval 1    refresh each pane every 1s (default: 2)
 #   watch-workers.sh --rebuild       force a fresh re-tile to the current workers
 #   watch-workers.sh --no-auto       don't auto-tile new workers as they appear
+#   watch-workers.sh --keep-ended    keep panes of finished workers (default:
+#                                    reap a pane once its worker session ends)
 #   watch-workers.sh --once          print a one-shot snapshot and exit (no tmux)
 #   watch-workers.sh -h | --help     show this help
 #
@@ -52,6 +56,41 @@ list_workers() {
     | grep "^${PREFIX}" | sort || true
 }
 
+# Close mirror panes in window $1 whose worker session has ended. A pane is one
+# of OUR managed mirrors iff its title starts with $PREFIX (worker session
+# names always do; placeholders like "_waiting"/"_control" and any team-leader
+# pane never do, so they are left untouched). When $2=1 and reaping would empty
+# the window, a "_waiting" placeholder is dropped in first so the dashboard
+# session survives with no workers running. Stays quiet when nothing is stale.
+reap_dead_panes() {
+  local win="$1" keep_alive="${2:-0}" workers line pid title dead total ndead wpid
+  workers=$(list_workers)
+  dead=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    pid=${line%% *}; title=${line#* }
+    case "$title" in "$PREFIX"*) ;; *) continue ;; esac   # only managed mirrors
+    if ! printf '%s\n' "$workers" | grep -qxF "$title"; then
+      dead="$dead $pid"
+    fi
+  done < <(tmux list-panes -t "$win" -F '#{pane_id} #{pane_title}' 2>/dev/null || true)
+
+  [ -n "${dead// /}" ] || return 0   # nothing ended since last sweep
+
+  if [ "$keep_alive" = 1 ]; then
+    total=$(tmux list-panes -t "$win" 2>/dev/null | grep -c . || true)
+    ndead=$(printf '%s' "$dead" | wc -w | tr -d ' ')
+    if [ "${total:-0}" -le "${ndead:-0}" ]; then
+      wpid=$(tmux split-window -t "$win" -P -F '#{pane_id}' \
+              "printf 'Waiting for %s* workers…\\n(this view fills in as the team starts)\\n' '$PREFIX'; while :; do sleep 3; done")
+      tmux select-pane -t "$wpid" -T "_waiting"
+    fi
+  fi
+
+  for pid in $dead; do tmux kill-pane -t "$pid" 2>/dev/null || true; done
+  tmux select-layout -t "$win" tiled >/dev/null 2>&1 || true
+}
+
 # --- internal entrypoints (invoked by the panes / controller, not by humans) ---
 case "${1:-}" in
   __pane)
@@ -71,11 +110,13 @@ case "${1:-}" in
     done
     ;;
   __control)
-    # __control <interval> — add a pane whenever a new worker appears and drop
-    # the placeholder once the first real worker arrives. Never kills the
-    # session, so it survives alongside the panes it manages.
-    interval="$2"
+    # __control <interval> [reap] — add a pane whenever a new worker appears,
+    # drop the placeholder once the first real worker arrives, and (when reap=1,
+    # the default) close a worker's pane once its session ends. Never kills the
+    # monitor session itself, so it survives alongside the panes it manages.
+    interval="$2"; reap="${3:-1}"
     while tmux has-session -t "$MONITOR" 2>/dev/null; do
+      if [ "$reap" = 1 ]; then reap_dead_panes "$AGENTS_WIN" 1 || true; fi
       have=$(tmux list-panes -t "$AGENTS_WIN" -F '#{pane_title}' 2>/dev/null || true)
       while IFS= read -r w; do
         [ -n "$w" ] || continue
@@ -118,13 +159,15 @@ INTERVAL=2
 AUTO=1
 MODE=open
 HERE=0
+REAP=1
 while [ $# -gt 0 ]; do
   case "$1" in
-    --interval) INTERVAL="${2:?--interval needs a value}"; shift 2 ;;
-    --here)     HERE=1; shift ;;
-    --rebuild)  MODE=rebuild; shift ;;
-    --no-auto)  AUTO=0; shift ;;
-    --once)     MODE=once; shift ;;
+    --interval)   INTERVAL="${2:?--interval needs a value}"; shift 2 ;;
+    --here)       HERE=1; shift ;;
+    --rebuild)    MODE=rebuild; shift ;;
+    --no-auto)    AUTO=0; shift ;;
+    --keep-ended) REAP=0; shift ;;
+    --once)       MODE=once; shift ;;
     *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -220,6 +263,7 @@ here_dashboard() {
         npid=$(add_worker_pane "$w") && HERE_CREATED="$HERE_CREATED $npid"
       fi
     done < <(list_workers)
+    if [ "$REAP" = 1 ] && [ "$AUTO" = 1 ]; then reap_dead_panes "$HERE_WIN" 0 || true; fi
     render_here_header
     if [ "$AUTO" != 1 ]; then
       # --no-auto: built the current set once; idle, refreshing only the header.
@@ -275,7 +319,7 @@ build_dashboard() {
   tmux set-option -t "$MONITOR" pane-border-format ' #{pane_title} ' >/dev/null 2>&1 || true
 
   if [ "$AUTO" = 1 ]; then
-    tmux new-window -d -t "$MONITOR" -n _control "$(pane_cmd "__control $INTERVAL")"
+    tmux new-window -d -t "$MONITOR" -n _control "$(pane_cmd "__control $INTERVAL $REAP")"
   fi
 }
 
